@@ -1,0 +1,1448 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>JUNGLE — 叢林求生</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&display=swap" rel="stylesheet">
+<style>
+:root{
+  --g:#39ff6e;--gd:#22cc50;
+  --a:#ffcc00;--r:#ff3355;--b:#33ccff;--p:#bb88ff;--o:#ff8833;
+  --bg:#050f07;--bg2:#091508;--bg3:#0d1e0e;
+  --bd:#1c3820;--bd2:#2a5030;
+  --t:#b8ffcc;--td:#5a9a6a;--tx:#253a28;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;}
+body{
+  background:var(--bg);color:var(--t);
+  font-family:'Share Tech Mono',monospace;font-size:15px;
+  display:flex;flex-direction:column;
+  max-width:393px;margin:0 auto;height:100dvh;
+  padding-top:env(safe-area-inset-top);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+body::before{
+  content:'';position:fixed;inset:0;max-width:393px;margin:0 auto;
+  background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,255,80,0.018) 3px,rgba(0,255,80,0.018) 4px);
+  pointer-events:none;z-index:900;
+}
+#hdr{flex-shrink:0;background:var(--bg2);border-bottom:1px solid var(--bd);padding:8px 12px 7px;}
+#hdr-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;}
+#gtitle{font-family:'VT323',monospace;font-size:26px;color:var(--g);letter-spacing:4px;line-height:1;}
+#hdr-right{text-align:right;}
+#datetime{font-size:12px;color:var(--td);line-height:1.5;}
+#weather-line{font-size:12px;color:var(--b);line-height:1.5;}
+#shelter-wrap{margin-bottom:6px;}
+#shelter-label{display:flex;justify-content:space-between;font-size:11px;color:var(--td);margin-bottom:3px;}
+#shelter-bar{height:5px;background:var(--bd);border-radius:3px;overflow:hidden;}
+#shelter-fill{height:100%;background:linear-gradient(90deg,var(--gd),var(--a));border-radius:3px;transition:width 0.5s;}
+#stats-row{display:grid;grid-template-columns:repeat(2,1fr);gap:6px 12px;}
+.sm{display:flex;flex-direction:column;gap:2px;}
+.sm-top{display:flex;justify-content:space-between;font-size:12px;}
+.sml{color:var(--td);}.smv{color:var(--t);font-weight:500;}
+.sbar{height:5px;background:var(--bd);border-radius:2px;overflow:hidden;}
+.sf{height:100%;border-radius:2px;transition:width 0.3s;}
+.hp{background:var(--r);}.hun{background:var(--a);}.thi{background:var(--b);}.slp{background:var(--p);}
+#log{flex:1;overflow-y:auto;overflow-x:hidden;padding:10px 13px 6px;-webkit-overflow-scrolling:touch;}
+#log::-webkit-scrollbar{width:2px;}
+#log::-webkit-scrollbar-thumb{background:var(--bd2);}
+.ll{line-height:1.85;font-size:15px;word-break:break-all;}
+.li{color:var(--t);}.lw{color:var(--a);}.ld{color:var(--r);}
+.ls{color:var(--g);}.lm{color:var(--td);}.lx{color:var(--b);}
+.lp{color:var(--bd2);user-select:none;}.lo{color:var(--o);}.lb{color:#ff44ff;}
+#loc-bar{flex-shrink:0;background:var(--bg3);border-bottom:1px solid var(--bd);padding:5px 12px;display:flex;align-items:center;justify-content:space-between;font-size:12px;}
+#loc-left{display:flex;align-items:center;gap:8px;}
+#loc-name{color:var(--td);}#loc-coord{color:var(--tx);font-size:11px;}
+#loc-res-wrap{display:flex;align-items:center;gap:6px;}
+#loc-res-bar-outer{width:60px;height:5px;background:var(--bd);border-radius:3px;overflow:hidden;}
+#loc-res-bar-inner{height:100%;border-radius:3px;transition:width 0.4s;}
+#loc-res-label{font-size:11px;color:var(--td);min-width:52px;text-align:right;}
+#tabs{flex-shrink:0;display:flex;border-top:1px solid var(--bd);border-bottom:1px solid var(--bd);background:var(--bg2);}
+.tab{flex:1;padding:7px 0;text-align:center;font-size:12px;color:var(--td);cursor:pointer;border-right:1px solid var(--bd);transition:all 0.15s;}
+.tab:last-child{border-right:none;}
+.tab.active{color:var(--g);background:var(--bg3);}
+.panel{display:none;padding:8px 12px;background:var(--bg2);border-bottom:1px solid var(--bd);}
+.panel.active{display:block;}
+#inv-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;max-height:110px;overflow-y:auto;}
+.inv-cell{background:var(--bg3);border:1px solid var(--bd);padding:5px 6px;font-size:11px;border-radius:3px;display:flex;justify-content:space-between;align-items:center;}
+.ic-n{color:var(--t);}.ic-q{color:var(--a);font-size:12px;}
+#eq-wrap{display:grid;grid-template-columns:repeat(2,1fr);gap:5px;}
+.eq-slot{background:var(--bg3);border:1px solid var(--bd);padding:5px 8px;border-radius:3px;}
+.eq-l{font-size:10px;color:var(--td);}.eq-v{font-size:13px;color:var(--a);}
+#rec-list{max-height:115px;overflow-y:auto;}
+.ri{display:grid;grid-template-columns:14px 68px 1fr;gap:4px;align-items:baseline;padding:3px 0;border-bottom:1px solid var(--bd);font-size:12px;line-height:1.7;}
+.ri:last-child{border-bottom:none;}
+.rc{color:var(--g);}.rn2{color:var(--tx);}.rnm{color:var(--t);}
+.ri-right{display:flex;flex-direction:column;}
+.rnd{color:var(--td);font-size:10px;}.rpu{color:var(--o);font-size:10px;}
+#shelter-detail{font-size:13px;line-height:1.9;}
+.sh-stage{padding:4px 0;border-bottom:1px solid var(--bd);display:flex;gap:8px;align-items:flex-start;}
+.sh-done{color:var(--g);}.sh-next{color:var(--a);}.sh-lock{color:var(--tx);}
+.sh-name{min-width:70px;}.sh-need{font-size:11px;color:var(--td);flex:1;}
+#last-cmd-bar{flex-shrink:0;background:var(--bg2);border-bottom:1px solid var(--bd);padding:4px 12px;display:flex;align-items:center;gap:8px;font-size:11px;}
+#last-cmd-label{color:var(--tx);}
+#last-cmd-val{color:var(--td);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+#last-cmd-btn{background:var(--bg3);border:1px solid var(--bd);color:var(--g);font-family:'Share Tech Mono',monospace;font-size:11px;padding:2px 10px;cursor:pointer;border-radius:2px;flex-shrink:0;}
+#last-cmd-btn:active{background:var(--bd2);}
+#inp-area{flex-shrink:0;display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg2);border-top:1px solid var(--bd);}
+#inp-prompt{color:var(--g);font-size:18px;line-height:1;}
+#inp{flex:1;background:transparent;border:none;outline:none;color:var(--g);font-family:'Share Tech Mono',monospace;font-size:15px;caret-color:var(--g);min-width:0;padding:4px 0;}
+#inp::placeholder{color:var(--tx);}
+#inp-btn{background:var(--bg3);border:1px solid var(--bd2);color:var(--td);font-family:'Share Tech Mono',monospace;font-size:13px;padding:5px 12px;cursor:pointer;border-radius:3px;flex-shrink:0;}
+#inp-btn:active{background:var(--bd2);}
+#modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:999;align-items:center;justify-content:center;max-width:393px;margin:0 auto;}
+#modal.show{display:flex;}
+#mbox{background:var(--bg2);border:1px solid var(--gd);padding:24px 20px;width:90%;font-size:14px;line-height:2;}
+#mtitle{font-family:'VT323',monospace;font-size:28px;color:var(--g);margin-bottom:12px;letter-spacing:2px;}
+#mbody{color:var(--t);margin-bottom:16px;}
+#mclose{background:transparent;border:1px solid var(--gd);color:var(--g);font-family:'Share Tech Mono',monospace;font-size:14px;padding:6px 0;cursor:pointer;width:100%;}
+/* FACTION STYLES */
+#faction-bar{flex-shrink:0;background:#05080a;border-bottom:1px solid #1a2a1a;padding:5px 12px;display:none;}
+#faction-bar.show{display:block;}
+#faction-bar-title{font-size:10px;color:var(--tx);margin-bottom:4px;letter-spacing:1px;}
+#faction-rows{display:flex;flex-direction:column;gap:3px;}
+.frow{display:grid;grid-template-columns:80px 1fr 38px;align-items:center;gap:6px;font-size:11px;}
+.fn{color:var(--td);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.fbar-outer{height:4px;background:var(--bd);border-radius:2px;overflow:hidden;}
+.fbar-inner{height:100%;border-radius:2px;transition:width 0.4s;}
+.fpct{text-align:right;font-size:10px;}
+.fc-mining{color:#ff6633;}.fc-merc{color:#ff3355;}.fc-plague{color:#bb88ff;}.fc-rescue{color:#33ccff;}
+.choice-box{background:#0a1a0a;border:1px solid var(--bd2);padding:8px 10px;margin:4px 0;border-radius:3px;font-size:13px;}
+.choice-btn{display:inline-block;background:var(--bg3);border:1px solid var(--bd2);color:var(--g);font-family:'Share Tech Mono',monospace;font-size:12px;padding:3px 10px;margin:3px 4px 3px 0;cursor:pointer;border-radius:2px;}
+.choice-btn:active{background:var(--bd2);}
+.choice-btn.red{border-color:#ff3355;color:#ff3355;}
+.choice-btn.yellow{border-color:#ffcc00;color:#ffcc00;}
+.choice-btn.blue{border-color:#33ccff;color:#33ccff;}
+</style>
+</head>
+<body>
+<div id="hdr">
+  <div id="hdr-top">
+    <div id="gtitle">JUNGLE</div>
+    <div id="hdr-right">
+      <div id="datetime">第1天 06:00</div>
+      <div id="weather-line">☀ 晴天</div>
+    </div>
+  </div>
+  <div id="shelter-wrap">
+    <div id="shelter-label"><span id="shelter-stage-name">避難所: 未建造</span><span id="shelter-pct">0%</span></div>
+    <div id="shelter-bar"><div id="shelter-fill" style="width:0%"></div></div>
+  </div>
+  <div id="stats-row">
+    <div class="sm"><div class="sm-top"><span class="sml">生命</span><span class="smv" id="v-hp">100</span></div><div class="sbar"><div class="sf hp" id="b-hp" style="width:100%"></div></div></div>
+    <div class="sm"><div class="sm-top"><span class="sml">飢餓</span><span class="smv" id="v-hun">100</span></div><div class="sbar"><div class="sf hun" id="b-hun" style="width:100%"></div></div></div>
+    <div class="sm"><div class="sm-top"><span class="sml">口渴</span><span class="smv" id="v-thi">100</span></div><div class="sbar"><div class="sf thi" id="b-thi" style="width:100%"></div></div></div>
+    <div class="sm"><div class="sm-top"><span class="sml">睡眠</span><span class="smv" id="v-slp">100</span></div><div class="sbar"><div class="sf slp" id="b-slp" style="width:100%"></div></div></div>
+  </div>
+</div>
+<div id="loc-bar">
+  <div id="loc-left"><span id="loc-name">✈ 墜機殘骸</span><span id="loc-coord">(5,5)</span></div>
+  <div id="loc-res-wrap">
+    <div id="loc-res-bar-outer"><div id="loc-res-bar-inner" style="width:100%"></div></div>
+    <span id="loc-res-label">資源充足</span>
+  </div>
+</div>
+<div id="last-cmd-bar">
+  <span id="last-cmd-label">上次:</span>
+  <span id="last-cmd-val">—</span>
+  <button id="last-cmd-btn" onclick="repeatLastCmd()">!! 重複</button>
+</div>
+<div id="log"></div>
+<div id="faction-bar">
+  <div id="faction-bar-title">⚠ 勢力威脅</div>
+  <div id="faction-rows"></div>
+</div>
+<div id="tabs">
+  <div class="tab active" onclick="switchTab('inv')">背包</div>
+  <div class="tab" onclick="switchTab('eq')">裝備</div>
+  <div class="tab" onclick="switchTab('rec')">配方</div>
+  <div class="tab" onclick="switchTab('shlt')">避難所</div>
+</div>
+<div id="panel-inv"  class="panel active"><div id="inv-grid"></div></div>
+<div id="panel-eq"   class="panel"><div id="eq-wrap"></div></div>
+<div id="panel-rec"  class="panel"><div id="rec-list"></div></div>
+<div id="panel-shlt" class="panel"><div id="shelter-detail"></div></div>
+<div id="inp-area">
+  <span id="inp-prompt">&gt;</span>
+  <input id="inp" type="text" placeholder="輸入指令... (? 說明)" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+  <button id="inp-btn" onclick="submitCmd()">送出</button>
+</div>
+<div id="modal">
+  <div id="mbox">
+    <div id="mtitle"></div>
+    <div id="mbody"></div>
+    <button id="mclose" onclick="closeModal()">[ 確認 ]</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════
+// TERRAIN
+// ═══════════════════════════════════
+const TR={
+  jungle:{ch:'T',lb:'雨林',    icon:'🌿',maxRes:8, regenDays:2, res:['原木','棕櫚葉','藤蔓','野果','藥草','樹皮','原木','藤蔓','蘑菇'],desc:'巨木參天，藤蔓纏繞，叫聲四起。'},
+  bamboo:{ch:'%',lb:'竹林',    icon:'🎋',maxRes:6, regenDays:3, res:['竹子','竹子','竹子','藤蔓','樹皮'],desc:'翠綠竹林沙沙作響，清涼宜人。'},
+  hill:  {ch:'^',lb:'山坡',    icon:'⛰', maxRes:5, regenDays:4, res:['石頭','石頭','燧石','骨頭','石頭'],desc:'岩石裸露，視野開闊。'},
+  swamp: {ch:'*',lb:'沼澤',    icon:'🌊',maxRes:6, regenDays:2, res:['黏土','黏土','蘆薈','藥草','黏土'],desc:'陰暗泥濘，蟲鳴不絕。'},
+  river: {ch:'~',lb:'河流',    icon:'💧',maxRes:999,regenDays:0,res:['魚','魚','石頭'],desc:'湍急清澈，可取水和捕魚。'},
+  clear: {ch:'.',lb:'空地',    icon:'🌱',maxRes:4, regenDays:2, res:['野果','香蕉','蘆薈','野果'],desc:'開闊地帶，適合建造避難所。'},
+  wreck: {ch:'#',lb:'墜機殘骸',icon:'✈', maxRes:10,regenDays:5, res:['金屬碎片','電線','防水布','急救包','金屬碎片','電線'],desc:'扭曲機身散落各處，每隔數天仍可發現新的物資。'},
+  boss:  {ch:'B',lb:'BOSS領地',icon:'💀',maxRes:0, regenDays:0, res:[],desc:'這裡瀰漫著危險的氣息。每個動作都會激怒叢林巨獸！'},
+};
+
+const MAP_W=11,MAP_H=11;
+const DIR_DELTA={n:[0,1],s:[0,-1],e:[1,0],w:[-1,0],north:[0,1],south:[0,-1],east:[1,0],west:[-1,0]};
+const DIR_NAME={n:'北',s:'南',e:'東',w:'西',north:'北',south:'南',east:'東',west:'西'};
+
+const BOSS_MAX_HP=220,BOSS_ATK=22,BOSS_ATK_RAGE=32,BOSS_DEF=12,BOSS_RAGE_HP=80,BOSS_INFECT=0.3;
+// BOSS 主動攻擊（比主動攻擊稍弱，只有 BOSS 打玩家）
+const BOSS_PASSIVE_ATK=18,BOSS_PASSIVE_ATK_RAGE=26;
+
+const STAGES=[
+  {id:0,name:'未建造',    needs:{},                                           bonus:''},
+  {id:1,name:'臨時遮蔽',  needs:{棕櫚葉:6,樹枝:4,繩索:2},                    bonus:'睡眠品質大幅提升'},
+  {id:2,name:'基礎木屋',  needs:{原木:10,竹子:6,藤蔓:4,繩索:2},              bonus:'夜間防獸效果提升'},
+  {id:3,name:'強化結構',  needs:{原木:15,石頭:8,黏土:6,骨釘:4},              bonus:'完全防止夜間獸襲'},
+  {id:4,name:'生活設施',  needs:{原木:10,金屬碎片:4,竹子:6,繩索:3},          bonus:'陷阱捕獵效率提升'},
+  {id:5,name:'求救信號台',needs:{金屬碎片:8,電線:3,防水布:2,繩索:4},         bonus:'持續發送求救信號'},
+  {id:6,name:'永久營地',  needs:{原木:15,獸骨核心:1,繩索:6,金屬碎片:4},      bonus:'觸發救援結局！（需第30天）'},
+];
+
+const NEED_FIRE=new Set(['烤肉','烤魚','蘑菇湯']);
+const WEAPON_ITEMS=new Set(['燧石刀','竹矛','石斧','金屬刀']);
+const ARMOR_ITEMS =new Set(['棕葉甲','竹甲','獸皮甲','防水披風','傭兵裝甲']);
+
+// ── 武器防具升級鏈（高等級消耗前一件）──
+// 武器路線：燧石刀 → 竹矛（消耗燧石刀）→ 石斧 → 金屬刀（消耗石斧）
+// 防具路線：棕葉甲 → 竹甲（消耗棕葉甲）→ 獸皮甲（消耗竹甲）
+// 防水披風：獨立輕量路線，不消耗其他防具
+const RECIPES={
+  // 材料
+  '繩索':    {needs:{藤蔓:3},                      gives:{繩索:2},     type:'material', purpose:'建造避難所、武器防具必備'},
+  '骨釘':    {needs:{骨頭:2},                      gives:{骨釘:3},     type:'material', purpose:'避難所第3階段建造用'},
+  '樹枝':    {needs:{原木:1},                      gives:{樹枝:3},     type:'material', purpose:'避難所第1階段、火堆原料'},
+  '木桶':    {needs:{原木:3},                      gives:{木桶:1},     type:'tool',     purpose:'永久取水容器，持有才能用 co 收集水'},
+  // 武器升級鏈
+  '燧石刀':  {needs:{燧石:2,樹枝:1},                gives:{燧石刀:1},   type:'weapon',   atk:7,  purpose:'早期武器 ATK+7，eq 裝備'},
+  '竹矛':    {needs:{竹子:3,繩索:2,燧石刀:1},        gives:{竹矛:1},     type:'weapon',   atk:10, purpose:'中期武器 ATK+10（消耗燧石刀升級），eq 裝備'},
+  '石斧':    {needs:{石頭:4,原木:2,繩索:3},          gives:{石斧:1},     type:'weapon',   atk:13, purpose:'重型武器 ATK+13，eq 裝備'},
+  '金屬刀':  {needs:{金屬碎片:5,繩索:3,石斧:1},      gives:{金屬刀:1},   type:'weapon',   atk:18, purpose:'最強武器 ATK+18（消耗石斧升級），eq 裝備'},
+  // 防具升級鏈
+  '棕葉甲':  {needs:{棕櫚葉:6,繩索:3},               gives:{棕葉甲:1},   type:'armor',    def:4,  purpose:'早期防具 DEF+4，eq 裝備'},
+  '竹甲':    {needs:{竹子:8,繩索:5,棕葉甲:1},         gives:{竹甲:1},     type:'armor',    def:8,  purpose:'中期防具 DEF+8（消耗棕葉甲升級），eq 裝備'},
+  '獸皮甲':  {needs:{獸皮:6,繩索:5,竹甲:1},           gives:{獸皮甲:1},   type:'armor',    def:12, purpose:'高級防具 DEF+12（消耗竹甲升級），eq 裝備'},
+  '防水披風':{needs:{防水布:1,繩索:2},                 gives:{防水披風:1}, type:'armor',    def:3,  purpose:'輕量防具 DEF+3，獨立路線，eq 裝備'},
+  // 建設
+  '火堆':    {needs:{原木:3,燧石:1,樹枝:3},           gives:{火堆:1},     type:'build',    purpose:'烹飪食物，提升睡眠品質'},
+  '竹水管':  {needs:{竹子:3},                         gives:{竹水管:1},   type:'tool',     purpose:'持有時在河邊 co 取水×3，無感染風險'},
+  '陷阱':    {needs:{樹枝:4,繩索:2,電線:1},           gives:{陷阱:1},     type:'build',    purpose:'每天自動捕獵，回到陷阱位置 co 取得'},
+  '醫療站':  {needs:{金屬碎片:2,繩索:3,棕櫚葉:4},     gives:{醫療站:1},   type:'build',    purpose:'建造後在此格使用急救藥，效果提升至 HP+50'},
+  // 食物
+  '烤肉':    {needs:{野豬肉:1},                       gives:{烤肉:1},     type:'food_item',hunger:65,thirst:0,  purpose:'需要火堆。飢餓+65'},
+  '烤魚':    {needs:{魚:1},                          gives:{烤魚:1},      type:'food_item',hunger:50,thirst:10, purpose:'需要火堆。飢餓+50，口渴+10'},
+  '蘑菇湯':  {needs:{蘑菇:2,水:1},                    gives:{蘑菇湯:1},   type:'food_item',hunger:45,thirst:25, purpose:'需要火堆。飢餓+45，口渴+25'},
+  // 醫療
+  '繃帶':    {needs:{樹皮:2,繩索:1},                  gives:{繃帶:2},     type:'medical',  purpose:'u 治療，HP+12，清感染'},
+  '急救藥':  {needs:{藥草:2,蘆薈:1},                  gives:{急救藥:1},   type:'medical',  purpose:'u 使用，HP+30（醫療站時 HP+50），清感染'},
+  // 勢力系統
+  '草藥過濾器':{needs:{藥草:4,竹子:2,繩索:1},          gives:{草藥過濾器:1},type:'tool',    purpose:'持有時免疫瘟疫感染，對抗叢林瘟疫'},
+};
+const ARMOR_EXTRA={'傭兵裝甲':{def:15}};
+
+const EDIBLE={
+  野果:  {hunger:20,thirst:8},
+  香蕉:  {hunger:30,thirst:10},
+  烤肉:  {hunger:65,thirst:0},
+  烤魚:  {hunger:50,thirst:10},
+  蘑菇湯:{hunger:45,thirst:25},
+};
+
+function hasClinicHere(){return G.built.some(b=>b.x===G.px&&b.y===G.py&&b.type==='醫療站');}
+
+const USABLE={
+  蘆薈:   G=>{G.s.hp=cl(G.s.hp+15);log('塗抹蘆薈，HP+15','ls');},
+  急救包: G=>{G.s.hp=cl(G.s.hp+50);G.infected=false;log('使用急救包，HP+50，清除感染','ls');},
+  繃帶:   G=>{G.s.hp=cl(G.s.hp+12);G.infected=false;log('包紮傷口，HP+12，清感染','ls');},
+  急救藥: G=>{
+    const clinic=hasClinicHere();const heal=clinic?50:30;
+    G.s.hp=cl(G.s.hp+heal);G.infected=false;
+    log(`服用急救藥${clinic?' (醫療站加成！)':''}，HP+${heal}，清感染`,'ls');
+    if(!clinic)log('提示：在醫療站旁使用效果提升至 HP+50','lm');
+  },
+  竹水管: G=>{
+    if(G.map[G.py][G.px]==='river'){addItem('水',3);G.s.thirst=cl(G.s.thirst+30);log('竹水管淨化河水，取得水×3，口渴+30','ls');}
+    else{log('需要在河流旁才能使用竹水管。','lw');return false;}
+  },
+  黑盒子: G=>{useBlackbox();return false;}, // 不消耗
+  草藥過濾器: G=>{
+    if(G.factionPhase&&G.factions){G.factions.plague.filterCrafted=true;}
+    log('草藥過濾器啟動，瘟疫感染免疫已生效。','ls');return false;
+  },
+};
+
+const EVENTS={
+  jungle:[
+    {msg:'一條蟒蛇從草叢竄出！',type:'combat',enemy:'蟒蛇',hp:25,atk:10,drop:{獸皮:2,骨頭:1}},
+    {msg:'你在樹冠找到一串香蕉。',type:'item',item:'香蕉',qty:3},
+    {msg:'發現茂盛的藥草叢。',type:'item',item:'藥草',qty:3},
+    {msg:'蜂巢！蜜蜂攻擊了你。',type:'dmg',dmg:10,infectChance:0},
+    {msg:'叢林深處傳來咆哮聲，你繞道而行。',type:'atm'},
+    {msg:'你找到一株蘑菇叢。',type:'item',item:'蘑菇',qty:3},
+  ],
+  bamboo:[
+    {msg:'野豬出沒！',type:'combat',enemy:'野豬',hp:35,atk:12,drop:{野豬肉:2,骨頭:2,獸皮:2}},
+    {msg:'發現一根粗壯老竹。',type:'item',item:'竹子',qty:3},
+    {msg:'竹林中你踩到了尖刺！',type:'dmg',dmg:8,infectChance:0},
+  ],
+  hill:[
+    {msg:'腳下石塊滑動，你跌落！',type:'dmg',dmg:12,infectChance:0},
+    {msg:'岩縫中找到燧石。',type:'item',item:'燧石',qty:2},
+    {msg:'山羊衝來攻擊！',type:'combat',enemy:'山羊',hp:20,atk:7,drop:{野豬肉:1,骨頭:1,獸皮:1}},
+    {msg:'你在岩縫裡找到一堆骨頭。',type:'item',item:'骨頭',qty:3},
+    {msg:'你在山坡上發現墜機時散落的金屬殘片！',type:'item',item:'金屬碎片',qty:1},
+  ],
+  swamp:[
+    {msg:'沼澤中毒蟲大量叮咬你！',type:'dmg',dmg:12,infectChance:0.28},
+    {msg:'沼澤邊發現大片蘆薈。',type:'item',item:'蘆薈',qty:3},
+    {msg:'毒蟲叮咬，傷口發炎！',type:'dmg',dmg:7,infectChance:0.35},
+    {msg:'挖出大量黏土。',type:'item',item:'黏土',qty:4},
+  ],
+  river:[
+    {msg:'你抓到了魚！',type:'item',item:'魚',qty:2},
+    {msg:'河流湍急，你差點被沖走！',type:'dmg',dmg:8,infectChance:0},
+    {msg:'河邊發現一些石頭。',type:'item',item:'石頭',qty:3},
+  ],
+  clear:[
+    {msg:'發現一株野果樹！',type:'item',item:'野果',qty:5},
+    {msg:'一棵香蕉樹！',type:'item',item:'香蕉',qty:4},
+    {msg:'一隻猴子向你丟椰子！',type:'dmg',dmg:4,infectChance:0},
+    {msg:'你找到另一名倖存者留下的痕跡。',type:'npc'},
+    {msg:'草叢裡藏著一個飛機行李箱，裡面有金屬零件！',type:'item',item:'金屬碎片',qty:1},
+  ],
+  wreck:[
+    {msg:'殘骸深處發現更多物資！',type:'loot',items:{金屬碎片:2,電線:1,繃帶:1}},
+    {msg:'座椅下找到一個急救包。',type:'item',item:'急救包',qty:1},
+    {msg:'短路電線差點電到你！',type:'dmg',dmg:6,infectChance:0},
+    {msg:'找到一片防水布。',type:'item',item:'防水布',qty:1},
+    {msg:'你在殘骸深處的密封艙找到一個橙色金屬盒子...',type:'item',item:'黑盒子',qty:1},
+  ],
+};
+
+const NPC_LINES=[
+  '「往東的竹林有新鮮水源，但小心野豬。」',
+  '「沼澤裡有毒蟲，小心感染。」',
+  '「殘骸那邊過幾天還可以再挖，不要放棄。」',
+];
+
+// ═══════════════════════════════════
+// GAME STATE
+// ═══════════════════════════════════
+let G=null;
+let lastCmd='';
+
+function hasFire(){return G.built.some(b=>b.x===G.px&&b.y===G.py&&b.type==='火堆');}
+function hasShelter(){return G.shelterStage>=1;}
+function hasBarrel(){return (G.inv['木桶']||0)>0;}
+function hasTube(){return (G.inv['竹水管']||0)>0;}
+function bossRage(){return G.bossHp<=BOSS_RAGE_HP&&!G.bossDefeated;}
+function onBossGround(){return G.map[G.py][G.px]==='boss'&&!G.bossDefeated;}
+
+// ═══════════════════════════════════
+// FACTION SYSTEM
+// ═══════════════════════════════════
+const FACTIONS={
+  mining:{
+    id:'mining', name:'鐵爪公司', shortName:'採礦集團',
+    color:'#ff6633', cls:'fc-mining',
+    active:false, progress:0, speed:12, eliminated:false,
+    relationship:'unknown', // unknown/hostile/eliminated
+    evidenceCount:0, warned:false, siegeActive:false,
+    // 各階段閾值
+    thresholds:[
+      {pct:20, triggered:false, id:'mining_spy'},
+      {pct:40, triggered:false, id:'mining_demand'},
+      {pct:60, triggered:false, id:'mining_sabotage'},
+      {pct:80, triggered:false, id:'mining_siege'},
+      {pct:100,triggered:false, id:'mining_disaster'},
+    ]
+  },
+  merc:{
+    id:'merc', name:'傭兵「鬼臉」', shortName:'傭兵',
+    color:'#ff3355', cls:'fc-merc',
+    active:false, progress:0, speed:8, eliminated:false,
+    relationship:'unknown',
+    blackboxDemanded:false, sniperActive:false, trackCount:0,
+    thresholds:[
+      {pct:15, triggered:false, id:'merc_steal'},
+      {pct:35, triggered:false, id:'merc_poison'},
+      {pct:55, triggered:false, id:'merc_demand'},
+      {pct:75, triggered:false, id:'merc_sniper'},
+      {pct:100,triggered:false, id:'merc_disaster'},
+    ]
+  },
+  plague:{
+    id:'plague', name:'叢林瘟疫', shortName:'瘟疫',
+    color:'#bb88ff', cls:'fc-plague',
+    active:false, progress:0, speed:5, eliminated:false,
+    relationship:'hostile',
+    filterCrafted:false,
+    thresholds:[
+      {pct:25, triggered:false, id:'plague_spread1'},
+      {pct:50, triggered:false, id:'plague_spread2'},
+      {pct:75, triggered:false, id:'plague_spread3'},
+      {pct:100,triggered:false, id:'plague_disaster'},
+    ]
+  },
+  rescue:{
+    id:'rescue', name:'搜救隊', shortName:'搜救隊',
+    color:'#33ccff', cls:'fc-rescue',
+    active:false, progress:0, speed:3, eliminated:false,
+    relationship:'friendly',
+    blocked:false,
+    thresholds:[
+      {pct:30, triggered:false, id:'rescue_search'},
+      {pct:60, triggered:false, id:'rescue_close'},
+      {pct:90, triggered:false, id:'rescue_near'},
+      {pct:100,triggered:false, id:'rescue_arrive'},
+    ]
+  },
+};
+
+// 每天勢力推進（在 tick 跨天時呼叫）
+function factionDailyTick(){
+  if(!G.factionPhase)return;
+  const F=G.factions;
+
+  // 採礦集團推進
+  if(!F.mining.eliminated&&F.mining.active){
+    let spd=F.mining.speed;
+    if(F.merc.progress>=100)spd+=5; // 合流加速
+    F.mining.progress=Math.min(100,F.mining.progress+spd);
+  }
+  // 傭兵推進
+  if(!F.merc.eliminated&&F.merc.active){
+    F.merc.progress=Math.min(100,F.merc.progress+F.merc.speed);
+  }
+  // 瘟疫推進（下雨加速）
+  if(!F.plague.eliminated&&F.plague.active){
+    let spd=F.plague.speed;
+    if(G.weather==='rain'||G.weather==='storm')spd+=7;
+    F.plague.progress=Math.min(100,F.plague.progress+spd);
+  }
+  // 搜救隊推進
+  if(!F.rescue.eliminated&&F.rescue.active){
+    if(!F.rescue.blocked){
+      let spd=F.rescue.speed;
+      // 信號台加速
+      if(G.shelterStage>=5)spd+=3;
+      // 集團干擾
+      if(!F.mining.eliminated&&F.mining.progress>=60)spd-=3;
+      // 合流凍結
+      if(F.merc.progress>=100&&!F.merc.eliminated)spd=0;
+      F.rescue.progress=Math.min(99,F.rescue.progress+Math.max(0,spd));
+    }
+  }
+
+  // 檢查閾值觸發
+  checkFactionThresholds();
+  // 傭兵每日行動
+  mercDailyAction();
+  // 瘟疫地形效果
+  plagueDailyEffect();
+  // 狙擊手每日傷害
+  if(F.merc.sniperActive&&!F.merc.eliminated){
+    G.s.hp=cl(G.s.hp-25);
+    logSep();
+    log('🎯 砰！子彈從叢林深處射來，固定 -25 HP（防具無效）！','ld');
+    log('傭兵「鬼臉」：「你讓我等太久了。」','lb');
+    logSep();
+    if(G.s.hp<=0){doDeath();return;}
+  }
+  renderFactionBar();
+}
+
+function checkFactionThresholds(){
+  const F=G.factions;
+  Object.values(F).forEach(fac=>{
+    if(fac.eliminated)return;
+    fac.thresholds.forEach(th=>{
+      if(!th.triggered&&fac.progress>=th.pct){
+        th.triggered=true;
+        triggerFactionEvent(th.id,fac);
+      }
+    });
+  });
+}
+
+function triggerFactionEvent(id,fac){
+  switch(id){
+    // ── 採礦集團 ──
+    case 'mining_spy':
+      logSep();
+      log('🔍 你發現營地附近有人動過東西...','lw');
+      log('背包裡某樣東西不見了。','ld');
+      // 隨機移除一樣物品
+      {const items=Object.keys(G.inv).filter(k=>G.inv[k]>0);
+      if(items.length){const stolen=items[Math.floor(Math.random()*items.length)];remItem(stolen,1);log(`消失的是: ${stolen}×1`,'ld');}}
+      log('有人在監視你。輸入 <span style="color:#ff6633">investigate</span> 在殘骸周圍調查。','lw');
+      logSep();break;
+
+    case 'mining_demand':
+      logSep();
+      log('👥 三名陌生人從樹林走出，手持武器。','ld');
+      log('「我們是鐵爪公司的人。你的信號台讓我們很困擾。」','lo');
+      log('「自願關閉它，我們可以給你補給。拒絕的話...」他比了個手勢。','lo');
+      log('選擇: <span class="choice-btn" onclick="factionChoice(\'mining_demand\',\'comply\')">[ 服從關閉 ]</span> <span class="choice-btn red" onclick="factionChoice(\'mining_demand\',\'refuse\')">[ 拒絕 ]</span> <span class="choice-btn yellow" onclick="factionChoice(\'mining_demand\',\'stall\')">[ 拖延談判 ]</span>','li');
+      logSep();break;
+
+    case 'mining_sabotage':
+      logSep();
+      log('💥 夜間傳來爆炸聲！','ld');
+      log('鐵爪公司的人趁夜破壞了你的避難所結構！','ld');
+      if(G.shelterStage>1){G.shelterStage--;log(`避難所退回: ${STAGES[G.shelterStage].name}`,'ld');}
+      log('必須重新建造才能恢復。','lw');
+      log('⚠ 若不消滅採礦集團，他們會繼續破壞。','lw');
+      logSep();break;
+
+    case 'mining_siege':
+      G.factions.mining.siegeActive=true;
+      logSep();
+      log('⛔ 武裝小隊已包圍你的營地！','ld');
+      log('每天都會發動攻擊，無法迴避。','ld');
+      log('蒐集3份證據後使用 <span style="color:#ff6633">expose</span> 曝光，或直接戰鬥。','lw');
+      logSep();break;
+
+    case 'mining_disaster':
+      logSep();
+      log('💣 轟！轟！','ld');
+      log('鐵爪公司炸毀了你的信號台！','ld');
+      if(G.shelterStage>=5)G.shelterStage=4;
+      G.factions.rescue.progress=Math.max(0,G.factions.rescue.progress-20);
+      log('求救信號中斷。搜救進度大幅倒退。','ld');
+      log('必須重建信號台 (b 5) 並繼續對抗集團！','lw');
+      logSep();break;
+
+    // ── 傭兵 ──
+    case 'merc_steal':
+      {const items=Object.keys(G.inv).filter(k=>G.inv[k]>0&&k!=='水');
+      if(items.length){const stolen=items[Math.floor(Math.random()*items.length)];remItem(stolen,1);
+      logSep();
+      log(`「你今晚睡得很死。${stolen}放在哪個口袋，我很清楚。」`,'lb');
+      log(`${stolen}×1 消失了。有人在你睡覺時進入了營地。`,'ld');
+      logSep();}}break;
+
+    case 'merc_poison':
+      logSep();
+      log('💀 傭兵「鬼臉」開始干擾你的水源。','ld');
+      log('「你喝的每一口水，我都可以讓它變成毒藥。」','lb');
+      log('河流取水感染機率大幅上升。使用竹水管可降低風險。','lw');
+      G.factions.merc.poisonWater=true;
+      logSep();break;
+
+    case 'merc_demand':
+      logSep();
+      log('👤 一個蒙面男人走進你的視線。','ld');
+      log('「傭兵「鬼臉」。你應該早就知道我在這裡了。」','lb');
+      log('「給我黑盒子，48小時內。不然你的撤離計畫會永遠泡湯。」','lb');
+      if((G.inv['黑盒子']||0)>0){
+        log('選擇: <span class="choice-btn" onclick="factionChoice(\'merc_demand\',\'give\')">[ 交出黑盒子 ]</span> <span class="choice-btn red" onclick="factionChoice(\'merc_demand\',\'refuse\')">[ 拒絕 ]</span>','li');
+      }else{
+        log('（你沒有黑盒子。他冷笑了一聲。）','lm');
+        log('「限你48小時找到它。」','lb');
+        log('提示: 在殘骸地形反覆 explore 可能找到黑盒子。','lw');
+        G.factions.merc.speed+=3; // 加速推進
+      }
+      logSep();break;
+
+    case 'merc_sniper':
+      G.factions.merc.sniperActive=true;
+      logSep();
+      log('🎯 狙擊手模式啟動。','ld');
+      log('「談判結束了。」','lb');
+      log('每天將受到 -25 HP 固定傷害（防具無效）。','ld');
+      log('使用 <span style="color:#ff3355">track</span> 追蹤鬼臉位置，積累3次後可發動伏擊。','lw');
+      logSep();break;
+
+    case 'merc_disaster':
+      logSep();
+      log('📡 鬼臉聯繫了鐵爪公司...','ld');
+      log('兩股勢力合流！威脅全面升級！','ld');
+      G.factions.mining.speed+=8;
+      G.factions.mining.progress=Math.min(100,G.factions.mining.progress+20);
+      logSep();break;
+
+    // ── 瘟疫 ──
+    case 'plague_spread1':
+      logSep();log('🦠 沼澤地帶出現大量病死動物...','lw');
+      log('水源開始受到污染，感染風險上升。','lw');logSep();break;
+    case 'plague_spread2':
+      logSep();log('🦠 瘟疫蔓延至叢林植被。','ld');
+      log('叢林探索有機率接觸病原體而自動感染。','ld');logSep();break;
+    case 'plague_spread3':
+      logSep();log('🦠 你的感染傷口惡化速度加快！','ld');
+      log('感染狀態下每天額外扣血增加。','ld');logSep();break;
+    case 'plague_disaster':
+      logSep();log('☣ 大規模瘟疫爆發！','ld');
+      log('所有地形探索都有50%感染機率，直到遊戲結束。','ld');
+      G.factions.plague.catastrophe=true;logSep();break;
+
+    // ── 搜救 ──
+    case 'rescue_search':
+      logSep();log('📡 信號台廣播被接收到了。','ls');
+      log('搜救隊已開始組建，正在確認你的位置。','ls');logSep();break;
+    case 'rescue_close':
+      logSep();log('🚁 遠處偶爾傳來直升機聲音。','ls');
+      log('搜救隊正在接近，繼續維持信號台運作！','ls');logSep();break;
+    case 'rescue_near':
+      logSep();log('📻 無線電雜訊中聽到人聲！','ls');
+      log('搜救隊已非常接近，預計1~3天內抵達。','lo');logSep();break;
+    case 'rescue_arrive':
+      doWin();break;
+  }
+}
+
+// 傭兵每日行動（進度<15時無行動）
+function mercDailyAction(){
+  const F=G.factions.merc;
+  if(F.eliminated||!F.active)return;
+  if(F.poisonWater&&G.map[G.py][G.px]==='river'&&Math.random()<0.35){
+    G.infected=true;
+    log('💀 河水已被鬼臉污染！自動感染。','ld');
+  }
+  // 圍城時每天觸發採礦集團攻擊
+  if(G.factions.mining.siegeActive&&!G.factions.mining.eliminated){
+    const dmg=Math.max(1,15-Math.floor(getDef()/2));
+    G.s.hp=cl(G.s.hp-dmg);
+    log(`⚔ 鐵爪武裝小隊發動攻擊！-${dmg} HP。`,'ld');
+    if(G.s.hp<=0){doDeath();return;}
+  }
+}
+
+// 瘟疫每日地形效果
+function plagueDailyEffect(){
+  const F=G.factions.plague;
+  if(F.eliminated||!F.active||F.filterCrafted)return;
+  const t=G.map[G.py][G.px];
+  if(F.progress>=50&&t==='jungle'&&Math.random()<0.25){
+    G.infected=true;
+    log('🦠 你接觸了受污染的植物，傷口感染！','ld');
+  }
+  if(F.progress>=75&&G.infected){
+    G.s.hp=cl(G.s.hp-3); // 額外扣血（總共5/天）
+  }
+  if(F.catastrophe&&Math.random()<0.5){
+    G.infected=true;
+    log('☣ 瘟疫肆虐，你無法避免接觸病原體。','ld');
+  }
+}
+
+// 玩家選擇回調
+function factionChoice(event,choice){
+  switch(event){
+    case 'mining_demand':
+      if(choice==='comply'){
+        if(G.shelterStage>=5)G.shelterStage=4; // 關閉信號台
+        G.factions.mining.progress=Math.max(0,G.factions.mining.progress-30);
+        log('你同意關閉信號台。集團人員點頭離去。','lm');
+        log('信號台暫時關閉，搜救進度停滯。','ld');
+        G.factions.rescue.blocked=true;
+        setTimeout(()=>{G.factions.rescue.blocked=false;},0); // 持續blocked直到重建
+      }else if(choice==='refuse'){
+        G.factions.mining.speed+=5;
+        log('你拒絕了。他們轉身，臉上帶著冷笑。','ld');
+        log('鐵爪公司威脅升級，進度加速推進！','ld');
+      }else if(choice==='stall'){
+        G.factions.mining.progress=Math.max(0,G.factions.mining.progress-10);
+        log('你假裝考慮中，爭取了幾天時間。','lm');
+        log('採礦集團進度暫時減緩，但他們不會等太久。','lw');
+      }
+      renderFactionBar();break;
+
+    case 'merc_demand':
+      if(choice==='give'){
+        remItem('黑盒子',1);
+        G.factions.merc.eliminated=true;
+        G.factions.merc.sniperActive=false;
+        G.endingFlags=G.endingFlags||{};G.endingFlags.blackboxLost=true;
+        log('你交出了黑盒子。鬼臉消失在叢林中。','lm');
+        log('傭兵威脅解除，但黑盒子的內容永遠不會被公開。','ld');
+      }else if(choice==='refuse'){
+        G.factions.merc.speed+=4;
+        log('「好。那就用另一種方式結束。」他轉身離去。','lb');
+        log('傭兵威脅加速！使用 track 追蹤他。','ld');
+      }
+      renderFactionBar();break;
+  }
+}
+
+// investigate 指令（採礦集團）
+function doInvestigate(){
+  if(!G.factionPhase){log('目前沒有可調查的威脅。','lm');return;}
+  const F=G.factions.mining;
+  if(F.eliminated){log('採礦集團已被消滅，無需調查。','ls');return;}
+  const t=G.map[G.py][G.px];
+  if(t!=='wreck'&&t!=='hill'){log('需要在殘骸(✈)或山坡(⛰)地形才能調查採礦集團的線索。','lw');return;}
+  tick(60);if(G.dead)return;
+  if(Math.random()<0.6){
+    F.evidenceCount++;
+    const clues=[
+      '你找到一份採礦作業日誌，上面記錄著非法礦坑的坐標。',
+      '殘骸中發現一份合約文件，顯示飛機墜落是被蓄意安排的。',
+      '一個被丟棄的衛星電話，通話記錄指向「鐵爪總部」。',
+    ];
+    log(`🔍 ${clues[Math.min(F.evidenceCount-1,clues.length-1)]}`,'lo');
+    log(`證據蒐集: ${F.evidenceCount}/3${F.evidenceCount>=3?' — 輸入 expose 曝光！':''}`,'ls');
+    F.progress=Math.max(0,F.progress-15);
+    if(F.evidenceCount>=3)log('你掌握了足夠證據！輸入 <span style="color:#ff6633">expose</span> 透過無線電廣播。','lo');
+  }else{
+    log('這次調查沒有新的發現。','lm');
+  }
+  renderFactionBar();renderAll();
+}
+
+// expose 指令（曝光集團）
+function doExpose(){
+  const F=G.factions.mining;
+  if(!G.factionPhase||F.eliminated){log('沒有可曝光的對象。','lm');return;}
+  if(F.evidenceCount<3){log(`證據不足（${F.evidenceCount}/3），繼續 investigate 調查。`,'lw');return;}
+  if(G.shelterStage<5){log('需要信號台(b 5)才能廣播曝光！','lw');return;}
+  tick(30);if(G.dead)return;
+  logSep();
+  log('📡 你透過信號台廣播了全部證據！','ls');
+  log('國際媒體接收到訊號，鐵爪公司的非法行為曝光！','ls');
+  log('政府介入，採礦集團被迫全面撤退。','ls');
+  F.eliminated=true;F.siegeActive=false;
+  G.factions.plague.speed=0; // 瘟疫源頭消除，停止推進
+  G.factions.rescue.speed+=5; // 曝光加速搜救
+  G.endingFlags=G.endingFlags||{};G.endingFlags.miningExposed=true;
+  logSep();
+  renderFactionBar();renderAll();
+}
+
+// track 指令（追蹤傭兵）
+function doTrack(){
+  const F=G.factions.merc;
+  if(!G.factionPhase||F.eliminated){log('沒有可追蹤的目標。','lm');return;}
+  if(F.progress<35){log('目前還沒有足夠線索來追蹤他。繼續求生，等待他現身。','lm');return;}
+  const t=G.map[G.py][G.px];
+  if(t!=='jungle'&&t!=='hill'){log('需要在叢林(🌿)或山坡(⛰)地形追蹤。','lw');return;}
+  tick(60);if(G.dead)return;
+  F.trackCount++;
+  const msgs=[
+    '你發現一處臨時宿營的痕跡，火灰還有餘溫。',
+    '樹幹上有刀痕，是他標記的方位。',
+    '找到一個空彈殼，確認了他的大概位置。',
+  ];
+  log(`👣 ${msgs[Math.min(F.trackCount-1,msgs.length-1)]}`,'lo');
+  log(`追蹤進度: ${F.trackCount}/3${F.trackCount>=3?' — 輸入 ambush 發動伏擊！':''}`,'ls');
+  if(F.trackCount>=3)log('你已掌握鬼臉的位置！輸入 <span style="color:#ff3355">ambush</span> 發動伏擊。','lo');
+  renderAll();
+}
+
+// ambush 指令（伏擊傭兵）
+function doAmbush(){
+  const F=G.factions.merc;
+  if(!G.factionPhase||F.eliminated){log('沒有可伏擊的目標。','lm');return;}
+  if(F.trackCount<3){log(`追蹤次數不足（${F.trackCount}/3），先使用 track 追蹤。`,'lw');return;}
+  if(G.s.hp<60){log('HP 不足 60，狀態太差，伏擊必然失敗！先恢復體力。','ld');return;}
+  if(!G.equipped.weapon){log('沒有裝備武器，無法發動有效伏擊！','ld');return;}
+  logSep();
+  log('⚔ 你在鬼臉的營地外設下埋伏...','lo');
+  tick(30,false);if(G.dead)return;
+  // 伏擊戰鬥
+  const playerAtk=getAtk();
+  let mercHp=60;let rounds=0;
+  while(mercHp>0&&G.s.hp>0&&rounds<20){
+    mercHp-=playerAtk+Math.floor(Math.random()*6);
+    if(mercHp>0){const dmg=Math.max(1,20-Math.floor(getDef()/2));G.s.hp=cl(G.s.hp-dmg);}
+    rounds++;
+  }
+  if(G.s.hp>0&&mercHp<=0){
+    log('💀 鬼臉倒地！你搜刮了他的裝備。','ls');
+    addItem('傭兵裝甲',1);
+    log('取得: <span style="color:#ffcc00">傭兵裝甲</span>（DEF+15，eq 裝備）','ls');
+    addItem('雇傭合約',1);
+    log('取得: <span style="color:#bb88ff">雇傭合約文件</span>（飛機墜落真相的關鍵）','ls');
+    F.eliminated=true;F.sniperActive=false;
+    G.endingFlags=G.endingFlags||{};G.endingFlags.mercDefeated=true;
+    log('傭兵威脅永久解除。','ls');
+  }else{
+    log('伏擊失敗！鬼臉反殺！','ld');
+    const dmg=40;G.s.hp=cl(G.s.hp-dmg);G.infected=true;
+    log(`你受到 -${dmg} HP 並感染，狼狽逃脫。需要追蹤計數重置。`,'ld');
+    F.trackCount=0;
+  }
+  logSep();
+  if(G.s.hp<=0){doDeath();return;}
+  renderFactionBar();renderAll();
+}
+
+// 製作草藥過濾器（新配方）
+// 在 RECIPES 後面、newGame 前加入
+// use 黑盒子
+function useBlackbox(){
+  if(!(G.inv['黑盒子']>0)){log('你沒有黑盒子。','lw');return;}
+  logSep();
+  log('📼 黑盒子——墜機前10分鐘的通話錄音','lb');
+  const recordings=[
+    '「塔台，我們遭遇了不明干擾，導航系統全部失效...」',
+    '「重複一遍，是人為干擾！有人在地面使用電子干擾設備！」',
+    '「我看到了——山谷裡有燈光，那不是正常的——」',
+    '（靜電雜音，然後沉默。）',
+  ];
+  recordings.forEach((r,i)=>setTimeout(()=>log(r,'lb'),i*200));
+  setTimeout(()=>{
+    log('錄音結束。這是蓄意謀殺的直接證據。','lo');
+    G.endingFlags=G.endingFlags||{};G.endingFlags.blackboxHeard=true;
+    logSep();
+  },recordings.length*200);
+}
+
+// 渲染勢力條
+function renderFactionBar(){
+  if(!G||!G.factionPhase){document.getElementById('faction-bar').classList.remove('show');return;}
+  document.getElementById('faction-bar').classList.add('show');
+  const F=G.factions;
+  const active=[F.mining,F.merc,F.plague,F.rescue].filter(f=>f.active);
+  document.getElementById('faction-rows').innerHTML=active.map(f=>{
+    const pct=Math.min(100,f.progress);
+    const color=f.eliminated?'#22cc50':f.color;
+    const label=f.eliminated?'已消滅':f.id==='rescue'?`${Math.round(pct)}%`:`${Math.round(pct)}%`;
+    return`<div class="frow"><span class="fn" style="color:${color}">${f.shortName}</span><div class="fbar-outer"><div class="fbar-inner" style="width:${pct}%;background:${color}"></div></div><span class="fpct" style="color:${color}">${label}</span></div>`;
+  }).join('');
+}
+
+// 啟動勢力系統（b5完成後呼叫）
+function activateFactionPhase(){
+  if(G.factionPhase)return;
+  G.factionPhase=true;
+  G.factions=JSON.parse(JSON.stringify(FACTIONS)); // 深拷貝
+  G.factions.mining.active=true;
+  G.factions.merc.active=true;
+  G.factions.plague.active=true;
+  G.factions.rescue.active=true;
+  G.endingFlags={};
+  logSep();
+  log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━','lb');
+  log('  ⚠ 信號台廣播開始，世界正在靠近你','lb');
+  log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━','lb');
+  log('你以為發出信號是終點，但那只是開始。','lm');
+  log('叢林外的人們也收到了你的信號——各有目的。','lo');
+  logSep();
+  log('🔴 <span style="color:#ff6633">採礦集團「鐵爪公司」</span>：你的信號威脅了他們的秘密。','ld');
+  log('🔴 <span style="color:#ff3355">傭兵「鬼臉」</span>：任務是確保沒有倖存者。','ld');
+  log('🦠 <span style="color:#bb88ff">叢林瘟疫</span>：採礦污染釋放的病原體正在蔓延。','ld');
+  log('🟦 <span style="color:#33ccff">搜救隊</span>：也收到了信號，正在組建中。','ls');
+  logSep();
+  log('新指令: <span style="color:#ff6633">investigate</span>(調查) <span style="color:#ff6633">expose</span>(曝光) <span style="color:#ff3355">track</span>(追蹤) <span style="color:#ff3355">ambush</span>(伏擊)','lm');
+  renderFactionBar();
+}
+
+function newGame(){
+  const map=genMap();
+  let sx=5,sy=5;
+  for(let r=0;r<MAP_H;r++)for(let c=0;c<MAP_W;c++){if(map[r][c]==='wreck'){sx=c;sy=r;}}
+  const resGrid=[];
+  for(let y=0;y<MAP_H;y++){resGrid.push([]);for(let x=0;x<MAP_W;x++){const mx=TR[map[y][x]]?.maxRes||6;resGrid[y].push({cur:mx,max:mx,regenDay:0});}}
+  G={map,resGrid,
+    explored:Array.from({length:MAP_H},()=>Array(MAP_W).fill(false)),
+    px:sx,py:sy,
+    s:{hp:100,hunger:100,thirst:100,sleep:100},
+    infected:false,
+    inv:{水:3,繃帶:1},
+    equipped:{weapon:null,armor:null},
+    built:[],shelterStage:0,
+    day:1,hour:6,minute:0,
+    weather:'clear',weatherTimer:120,
+    tickN:0,dead:false,won:false,
+    marks:[],trapLoot:[],
+    bossHp:BOSS_MAX_HP,bossDefeated:false,
+    factionPhase:false,factions:null,endingFlags:{},
+  };
+  lastCmd='';updateLastCmdBar();
+  reveal(sx,sy,2);
+  logSep();log('  JUNGLE — 叢林求生','lx');logSep();
+  log('飛機墜入深山叢林，你從殘骸中爬出。','li');
+  log('建造避難所，打倒叢林巨獸，撐到第30天獲救！','lo');logSep();
+  log('初始物資: 水×3，繃帶×1','ls');
+  log('⚠ 取水需先製作木桶 (c 木桶)。','lw');
+  log('地圖上的 B 是叢林巨獸的領地。','lb');
+  log('⚠ 在 B 格做任何動作都會激怒叢林巨獸！','lb');logSep();
+  log('輸入 <span style="color:#39ff6e">?</span> 查看所有指令。','li');log('','li');
+  descLoc();renderAll();renderLocBar();
+}
+
+function genMap(){
+  const m=Array.from({length:MAP_H},()=>Array(MAP_W).fill('jungle'));
+  m[5][5]='wreck';
+  const types=['bamboo','bamboo','bamboo','hill','hill','swamp','swamp','river','river','clear','clear','clear'];
+  for(let i=0;i<26;i++){const x=1+Math.floor(Math.random()*(MAP_W-2));const y=1+Math.floor(Math.random()*(MAP_H-2));if(!(x===5&&y===5))m[y][x]=types[Math.floor(Math.random()*types.length)];}
+  let bx,by;
+  do{bx=1+Math.floor(Math.random()*(MAP_W-2));by=1+Math.floor(Math.random()*(MAP_H-2));}
+  while(Math.abs(bx-5)+Math.abs(by-5)<4||(bx===5&&by===5));
+  m[by][bx]='boss';
+  return m;
+}
+
+function reveal(x,y,r){for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){const nx=x+dx,ny=y+dy;if(nx>=0&&nx<MAP_W&&ny>=0&&ny<MAP_H)G.explored[ny][nx]=true;}}
+function getCell(){return G.resGrid[G.py][G.px];}
+function cellLabel(cell,t){if(t==='river')return'無限';if(t==='boss')return'—';if(cell.cur<=0)return'已耗盡';const p=cell.cur/cell.max;return p>0.6?'資源充足':p>0.3?'資源稀少':'幾乎耗盡';}
+function cellColor(cell,t){if(t==='river')return'#33ccff';if(t==='boss')return'#ff44ff';if(cell.cur<=0)return'#ff3355';const p=cell.cur/cell.max;return p>0.6?'#22cc50':p>0.3?'#ffcc00':'#ff8833';}
+function regenResources(){
+  for(let y=0;y<MAP_H;y++)for(let x=0;x<MAP_W;x++){
+    const t=G.map[y][x];const td=TR[t];if(!td||td.regenDays===0)continue;
+    const cell=G.resGrid[y][x];if(cell.cur<cell.max&&G.day>=cell.regenDay){cell.cur=cell.max;if(t==='wreck')log('殘骸的深處又有新物資可以發掘了！','lo');}
+  }
+}
+function regenLabel(t,cell){if(TR[t]?.regenDays===0)return'（永久耗盡）';return`約${Math.max(1,cell.regenDay-G.day)}天後再生。`;}
+
+function log(msg,cls='li'){const el=document.getElementById('log');const d=document.createElement('div');d.className='ll '+cls;d.innerHTML=msg;el.appendChild(d);el.scrollTop=el.scrollHeight;}
+function logSep(){log('─'.repeat(32),'lp');}
+function updateLastCmdBar(){document.getElementById('last-cmd-val').textContent=lastCmd||'—';document.getElementById('last-cmd-btn').style.opacity=lastCmd?'1':'0.4';}
+
+// ── BOSS 主動攻擊（在 BOSS 格任何消耗時間的行動後觸發）──
+function bossPassiveHit(){
+  if(!onBossGround())return;
+  const rage=bossRage();
+  const atk=rage?BOSS_PASSIVE_ATK_RAGE:BOSS_PASSIVE_ATK;
+  const dmg=Math.max(1,atk+Math.floor(Math.random()*5)-Math.floor(getDef()/2));
+  G.s.hp=cl(G.s.hp-dmg);
+  const infected=!G.infected&&Math.random()<BOSS_INFECT;
+  if(infected)G.infected=true;
+  log(`💀 叢林巨獸被你的動作激怒！反擊 -${dmg} HP${getDef()>0?' (防具減傷)':''}${rage?' 【狂暴】':''}。`,'ld');
+  if(infected)log('💉 巨獸毒素感染傷口！','ld');
+  if(G.s.hp<=0)doDeath();
+}
+
+// ═══════════════════════════════════
+// RENDER
+// ═══════════════════════════════════
+function renderAll(){renderStats();renderInv();renderEq();renderRec();renderShelter();renderLocBar();}
+function renderLocBar(){
+  if(!G)return;
+  const t=G.map[G.py][G.px];const td=TR[t];const cell=getCell();
+  const pct=t==='river'?100:t==='boss'?100:Math.max(0,cell.cur/cell.max*100);
+  document.getElementById('loc-name').textContent=(td?.icon||'📍')+' '+td?.lb;
+  document.getElementById('loc-coord').textContent=`(${G.px},${G.py})`;
+  document.getElementById('loc-res-bar-inner').style.width=pct+'%';
+  document.getElementById('loc-res-bar-inner').style.background=cellColor(cell,t);
+  let label=cellLabel(cell,t);
+  if(t==='boss')label=G.bossDefeated?'已討伐':(bossRage()?`狂暴! HP:${G.bossHp}`:`HP:${G.bossHp}`);
+  else if(cell.cur<=0&&TR[t]?.regenDays>0)label=`${Math.max(1,cell.regenDay-G.day)}天後再生`;
+  document.getElementById('loc-res-label').textContent=label;
+}
+function renderStats(){
+  const s=G.s;
+  const sb=(id,v)=>{document.getElementById('b-'+id).style.width=Math.max(0,Math.min(100,v))+'%';const el=document.getElementById('v-'+id);if(el)el.textContent=Math.round(v);};
+  sb('hp',s.hp);sb('hun',s.hunger);sb('thi',s.thirst);sb('slp',s.sleep);
+  const hh=String(G.hour).padStart(2,'0'),mm=String(G.minute).padStart(2,'0');
+  document.getElementById('datetime').textContent=`第${G.day}天  ${hh}:${mm}${G.infected?' [感染]':''}`;
+  document.getElementById('weather-line').textContent={clear:'☀ 晴天',rain:'🌧 下雨中',storm:'⛈ 熱帶暴雨',fog:'🌫 晨霧'}[G.weather]||'☀ 晴天';
+  const pct=G.shelterStage/6*100;
+  document.getElementById('shelter-fill').style.width=pct+'%';
+  document.getElementById('shelter-pct').textContent=Math.round(pct)+'%';
+  document.getElementById('shelter-stage-name').textContent='避難所: '+(STAGES[G.shelterStage]?.name||'完成');
+}
+function renderInv(){
+  const el=document.getElementById('inv-grid');const items=Object.entries(G.inv).filter(([,v])=>v>0);
+  if(!items.length){el.innerHTML='<div style="color:var(--tx);font-size:13px;padding:6px">背包是空的</div>';return;}
+  el.innerHTML=items.map(([k,v])=>{
+    const isEq=G.equipped.weapon===k||G.equipped.armor===k;
+    return`<div class="inv-cell" style="${isEq?'border-color:var(--g)':''}"><span class="ic-n">${k}${isEq?' ✓':''}</span><span class="ic-q">×${v}</span></div>`;
+  }).join('');
+}
+function renderEq(){
+  document.getElementById('eq-wrap').innerHTML=
+    [['武器',G.equipped.weapon],['防具',G.equipped.armor],['ATK',getAtk()],['DEF',getDef()]]
+    .map(([l,v])=>`<div class="eq-slot"><div class="eq-l">${l}</div><div class="eq-v">${v||'—'}</div></div>`).join('');
+}
+function renderRec(){
+  document.getElementById('rec-list').innerHTML=Object.entries(RECIPES).map(([name,rec])=>{
+    const can=Object.entries(rec.needs).every(([k,v])=>(G.inv[k]||0)>=v);
+    const needs=Object.entries(rec.needs).map(([k,v])=>`${k}×${v}`).join(' ');
+    return`<div class="ri"><span class="${can?'rc':'rn2'}">${can?'✓':'✗'}</span><span class="rnm">${name}</span><div class="ri-right"><span class="rnd">${needs}</span><span class="rpu">${rec.purpose||''}</span></div></div>`;
+  }).join('');
+}
+function renderShelter(){
+  document.getElementById('shelter-detail').innerHTML=STAGES.map((st,i)=>{
+    const done=G.shelterStage>i,next=G.shelterStage===i&&i>0;
+    const cls=done?'sh-done':next?'sh-next':'sh-lock';
+    const mark=done?'✓':next?'▶':'○';
+    const nameStyle=i===6?'color:#ff44ff':'';
+    const content=done?(st.bonus||'完成')
+      :i===0?'（起始狀態）'
+      :Object.entries(st.needs).map(([k,v])=>{
+        const have=Math.min(G.inv[k]||0,v);
+        const col=k==='獸骨核心'?'color:#ff44ff':'';
+        return`<span style="${col}">${k}×${v}(${have})</span>`;
+      }).join(' ');
+    return`<div class="sh-stage"><span class="${cls}">${mark}</span><span class="sh-name ${cls}" style="${nameStyle}">${st.name}</span><span class="sh-need">${content}</span></div>`;
+  }).join('');
+}
+function switchTab(name){
+  ['inv','eq','rec','shlt'].forEach((n,i)=>{document.querySelectorAll('.tab')[i].classList.toggle('active',n===name);document.getElementById('panel-'+n).classList.toggle('active',n===name);});
+}
+
+// ═══════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════
+function cl(v,mn=0,mx=100){return Math.max(mn,Math.min(mx,v));}
+function addItem(k,v){if(G)G.inv[k]=(G.inv[k]||0)+v;}
+function remItem(k,v){if(G)G.inv[k]=Math.max(0,(G.inv[k]||0)-v);}
+function getAtk(){const w=G.equipped.weapon;return w&&RECIPES[w]?RECIPES[w].atk||2:2;}
+function getDef(){const a=G.equipped.armor;if(!a)return 0;return(RECIPES[a]?.def||ARMOR_EXTRA[a]?.def||0);}
+function applyDmg(dmg){const def=getDef();const actual=Math.max(1,dmg-Math.floor(def/2));G.s.hp=cl(G.s.hp-actual);return actual;}
+
+// ═══════════════════════════════════
+// TICK（在 BOSS 格 tick 後觸發被動攻擊）
+// ═══════════════════════════════════
+function tick(mins=30,triggerBossPassive=true){
+  if(!G||G.dead||G.won)return;
+  G.minute+=mins;
+  while(G.minute>=60){G.minute-=60;G.hour++;}
+  while(G.hour>=24){
+    G.hour-=24;G.day++;regenResources();
+    log(`── 第 ${G.day} 天 ──`,'lx');
+    factionDailyTick();
+    if(G.built.some(b=>b.type==='陷阱')){
+      const chance=G.shelterStage>=4?0.6:0.4;
+      if(Math.random()<chance){
+        const prey=['野豬肉','獸皮','骨頭'][Math.floor(Math.random()*3)];
+        const trap=G.built.find(b=>b.type==='陷阱');
+        G.trapLoot.push({prey,x:trap.x,y:trap.y});
+        log(`陷阱有收穫！回到 (${trap.x},${trap.y}) 執行 co 取得。`,'lo');
+      }
+    }
+    if(G.day>=30&&G.shelterStage>=6&&!G.factionPhase)doWin();
+    else if(G.day>=30&&G.shelterStage>=6&&G.factionPhase){
+      // 勢力階段：搜救進度條達到100才觸發結局
+      // （由 rescue_arrive 事件觸發，這裡只做備援）
+      if(G.factions&&G.factions.rescue.progress>=100)doWin();
+      else if(G.day>=35){log('你已等待太久...體力耗盡。','ld');doDeath();}
+    }
+    else if(G.day>=30&&G.shelterStage>=5)log('信號台已完成！打倒叢林巨獸並完成永久營地才能獲救。','lo');
+    else if(G.day>=30)log('救援直升機飛過但未發現你...','ld');
+  }
+  G.weatherTimer-=mins;if(G.weatherTimer<=0)doWeather();
+  const night=G.hour<6||G.hour>=20;
+  G.s.hunger=cl(G.s.hunger-2);G.s.thirst=cl(G.s.thirst-3);
+  G.s.sleep=cl(G.s.sleep-(night?0:2));
+  if(G.infected)G.s.hp=cl(G.s.hp-2);
+  if(G.s.hunger<=0)G.s.hp=cl(G.s.hp-4);
+  if(G.s.thirst<=0)G.s.hp=cl(G.s.hp-6);
+  if(G.s.sleep<=0)G.s.hp=cl(G.s.hp-1);
+  if(night&&G.day>=3&&G.shelterStage<3&&G.hour===2&&Math.random()<0.2){
+    const actual=applyDmg(12);
+    log(`夜間野獸靠近！受傷 -${actual} HP${actual<12?' (防具減傷)':''}。`,'ld');
+    if(Math.random()<0.24){G.infected=true;log('爪痕感染！','ld');}
+  }
+  G.tickN++;if(G.tickN%5===0)warnStats();
+  if(G.s.hp<=0){doDeath();return;}
+  // BOSS 被動攻擊（在 BOSS 格任何消耗時間的行動後觸發）
+  if(triggerBossPassive)bossPassiveHit();
+}
+
+function warnStats(){
+  if(G.s.hunger<30)log('⚠ 飢餓警告','lw');
+  if(G.s.thirst<25)log('⚠ 缺水警告','lw');
+  if(G.s.sleep<20)log('⚠ 極度睏倦！探索效率下降。','lw');
+  if(G.s.sleep<=0)log('⚠ 你已精疲力竭，生命值持續下降！','ld');
+  if(G.infected)log('⚠ 傷口感染中，需要治療','ld');
+}
+function doWeather(){
+  const pool=['clear','clear','clear','rain','rain','storm','fog'];
+  G.weather=pool[Math.floor(Math.random()*pool.length)];G.weatherTimer=60+Math.random()*120;
+  const wm={clear:'天氣放晴了。',rain:'開始下雨，co 可收集雨水。',storm:'熱帶暴雨！co 可收集雨水。',fog:'清晨濃霧，能見度低。'};
+  log(wm[G.weather],G.weather==='clear'?'ls':G.weather==='fog'?'lm':'lw');
+}
+
+// ═══════════════════════════════════
+// ACTIONS
+// ═══════════════════════════════════
+function descLoc(){
+  const t=G.map[G.py][G.px];const td=TR[t];const cell=getCell();
+  log(`[${td?.lb}] (${G.px},${G.py})  ${td?.desc||''}`,t==='boss'?'lb':'lm');
+  if(t==='boss'){
+    if(G.bossDefeated){log('叢林巨獸已被你討伐，獸骨核心已在背包中。','ls');}
+    else{
+      const rage=bossRage();
+      const danger=G.bossHp>120?'極度危險':G.bossHp>80?'重傷，仍危險':rage?'⚠ 狂暴！極危險':'瀕死，可以一搏！';
+      log(`💀 叢林巨獸 HP:${G.bossHp}/${BOSS_MAX_HP}  ATK:${rage?BOSS_ATK_RAGE:BOSS_ATK}${rage?' 【狂暴】':''}  DEF:${BOSS_DEF}  [${danger}]`,'lb');
+      if(rage)log('⚠ 巨獸進入狂暴！ATK 大幅提升！','ld');
+      log(`被動攻擊 ATK:${rage?BOSS_PASSIVE_ATK_RAGE:BOSS_PASSIVE_ATK}（每個行動均觸發）`,'lw');
+      log(`你的 ATK:${getAtk()}  DEF:${getDef()}  HP:${Math.round(G.s.hp)}  → at 主動攻擊`, 'lw');
+    }
+  }else if(t==='river'){log('可採集: 魚、石頭（無限）。co 可取水。','lm');}
+  else if(cell.cur<=0){log(`資源耗盡。${regenLabel(t,cell)}`,'ld');}
+  else{log(`可採集: ${[...new Set(td?.res||[])].join('、')}（剩 ${cell.cur}/${cell.max}）`,'lm');}
+  const here=G.built.filter(b=>b.x===G.px&&b.y===G.py);
+  if(here.length){
+    log(`設施: ${here.map(b=>b.type).join('、')}`,'ls');
+    if(here.some(b=>b.type==='醫療站'))log('💊 醫療站在此！u 急救藥 效果提升至 HP+50','ls');
+  }
+  const pendingHere=G.trapLoot.filter(tl=>tl.x===G.px&&tl.y===G.py);
+  if(pendingHere.length)log(`陷阱有 ${pendingHere.length} 份獵物待取！(co 取得)`,'lo');
+}
+
+function doMove(dir){
+  const d=DIR_DELTA[dir];if(!d){log('方向錯誤，請輸入 n/s/e/w','lw');return;}
+  const nx=G.px+d[0],ny=G.py+d[1];
+  if(nx<0||nx>=MAP_W||ny<0||ny>=MAP_H){log('前方無路可走。','lw');return;}
+  G.px=nx;G.py=ny;reveal(nx,ny,1);
+  tick(30);// 移動進入 BOSS 格也觸發被動攻擊
+  if(G.dead)return;
+  log(`往${DIR_NAME[dir]}方移動了。(${G.px},${G.py})`,'lm');
+  descLoc();renderAll();
+}
+
+function doExplore(){
+  const t=G.map[G.py][G.px];
+  if(t==='boss'){log('這是BOSS領地，無法在此採集。','lw');return;}
+  const cell=getCell();const td=TR[t];
+  if(t!=='river'&&cell.cur<=0){log(`此處資源耗盡。${regenLabel(t,cell)}`,'ld');return;}
+  if(G.s.sleep<20&&Math.random()<0.5){tick(30);if(G.dead)return;log('你昏昏欲睡，探索毫無所獲。需要睡覺！','lw');renderAll();return;}
+  tick(30);if(G.dead)return;
+  const res=td?.res||[];
+  if(res.length){
+    const item=res[Math.floor(Math.random()*res.length)];const qty=1+Math.floor(Math.random()*2);
+    addItem(item,qty);log(`在${td.lb}採集，獲得 <span style="color:#ffcc00">${item} ×${qty}</span>`,'li');
+    if(Math.random()<0.3){const i2=res[Math.floor(Math.random()*res.length)];addItem(i2,1);log(`也發現了 ${i2} ×1`,'lm');}
+    if(t!=='river'){
+      cell.cur=Math.max(0,cell.cur-1);
+      if(cell.cur===0){if(TR[t].regenDays>0)cell.regenDay=G.day+TR[t].regenDays;log(`${td.lb}資源已耗盡！${regenLabel(t,cell)}`,'lw');}
+      else if(cell.cur<=Math.floor(cell.max*0.3))log(`${td.lb}資源稀少（剩${cell.cur}）。`,'lw');
+    }
+  }
+  if(Math.random()<0.4)triggerEvent(t);
+  renderAll();
+}
+
+function doAttack(){
+  const t=G.map[G.py][G.px];
+  if(t!=='boss'){log('附近沒有可攻擊的目標。移動到 BOSS 領地（B）才能攻擊。','lw');return;}
+  if(G.bossDefeated){log('叢林巨獸已被討伐。','lm');return;}
+  const rage=bossRage();
+  const currentBossAtk=rage?BOSS_ATK_RAGE:BOSS_ATK;
+  const playerDmg=Math.max(1,getAtk()+Math.floor(Math.random()*6)-Math.floor(BOSS_DEF/2));
+  const bossDmg=Math.max(1,currentBossAtk+Math.floor(Math.random()*6)-Math.floor(getDef()/2));
+  G.bossHp=Math.max(0,G.bossHp-playerDmg);
+  G.s.hp=cl(G.s.hp-bossDmg);
+  const infected=!G.infected&&Math.random()<BOSS_INFECT;
+  if(infected)G.infected=true;
+  logSep();
+  log(`⚔ 你攻擊叢林巨獸！造成 ${playerDmg} 傷害。`,'ls');
+  log(`💀 ${rage?'【狂暴】':''}巨獸反擊！你受到 ${bossDmg} 傷害${getDef()>0?' (防具減傷)':''}。`,'ld');
+  if(infected)log('💉 巨獸爪牙帶有毒素，傷口感染！','ld');
+  log(`巨獸剩餘 HP: ${G.bossHp}/${BOSS_MAX_HP}  你的 HP: ${Math.round(G.s.hp)}`,'lw');
+  if(!rage&&G.bossHp<=BOSS_RAGE_HP&&G.bossHp>0){logSep();log('💢 叢林巨獸進入狂暴狀態！ATK 大幅提升！','ld');}
+  if(G.bossHp<=0){
+    G.bossDefeated=true;logSep();
+    log('💀 叢林巨獸轟然倒地！','lb');
+    log('整片叢林陷入寂靜，你取出發光的獸骨核心...','lm');
+    addItem('獸骨核心',1);
+    log('取得: <span style="color:#ff44ff">獸骨核心 ×1</span>  → b 6 永久營地','ls');logSep();
+  }else{
+    const warn=G.s.hp<20?'⚠ HP極低，立刻撤退！':G.s.hp<40?'⚠ HP危險，建議先治療。':'at 繼續 / 移動撤退';
+    log(warn,G.s.hp<40?'ld':'lm');
+  }
+  // 主動攻擊（at）不觸發被動攻擊，已包含在雙方互打邏輯中
+  tick(30,false);
+  if(G.s.hp<=0){doDeath();return;}
+  renderAll();
+}
+
+function triggerEvent(terrain){
+  const pool=EVENTS[terrain]||EVENTS.clear;const ev=pool[Math.floor(Math.random()*pool.length)];
+  log('〔事件〕','lm');log(ev.msg,ev.type==='combat'?'ld':ev.type==='dmg'?'lw':'li');
+  switch(ev.type){
+    case 'item':addItem(ev.item,ev.qty);log(`取得: ${ev.item} ×${ev.qty}`,'ls');break;
+    case 'loot':Object.entries(ev.items).forEach(([k,v])=>addItem(k,v));log(`取得: ${Object.entries(ev.items).map(([k,v])=>k+'×'+v).join(', ')}`,'ls');break;
+    case 'dmg':{const actual=applyDmg(ev.dmg);const def=getDef();log(`受傷 -${actual} HP${def>0&&actual<ev.dmg?' (防具減傷)':''}。`,'lw');if((ev.infectChance||0)>0&&Math.random()<ev.infectChance){G.infected=true;log('傷口感染！','ld');}break;}
+    case 'combat':doCombat(ev);break;
+    case 'npc':log(NPC_LINES[Math.floor(Math.random()*NPC_LINES.length)],'lx');break;
+    case 'atm':break;
+  }
+}
+function doCombat(ev){
+  const atk=getAtk(),def=getDef();let eHp=ev.hp,rounds=0;
+  while(eHp>0&&G.s.hp>0&&rounds<15){eHp-=atk+Math.floor(Math.random()*6);G.s.hp=cl(G.s.hp-Math.max(1,ev.atk-def+Math.floor(Math.random()*5)-2));rounds++;}
+  if(G.s.hp>0&&eHp<=0){log(`擊敗了${ev.enemy}！`,'ls');if(ev.drop){Object.entries(ev.drop).forEach(([k,v])=>addItem(k,v));log(`戰利品: ${Object.entries(ev.drop).map(([k,v])=>k+'×'+v).join(', ')}`,'ls');}}
+  else{log(`${ev.enemy}擊傷你，你勉強逃脫。HP: ${Math.round(G.s.hp)}`,'ld');if(Math.random()<0.24){G.infected=true;log('傷口感染！','ld');}}
+}
+
+function doCraft(item){
+  if(!item){log('用法: c [物品名]  例: c 木桶','lw');return;}
+  const rec=RECIPES[item];if(!rec){log(`不知道如何製作「${item}」，查看配方面板。`,'lw');return;}
+  if(NEED_FIRE.has(item)&&!hasFire()){log(`製作「${item}」需要先在此處建造火堆。(c 火堆)`,'lw');return;}
+  const miss=Object.entries(rec.needs).filter(([k,v])=>(G.inv[k]||0)<v).map(([k,v])=>`${k}(缺${v-(G.inv[k]||0)})`);
+  if(miss.length){log(`材料不足: ${miss.join(', ')}`,'lw');return;}
+  Object.entries(rec.needs).forEach(([k,v])=>remItem(k,v));Object.entries(rec.gives).forEach(([k,v])=>addItem(k,v));
+  tick(60);if(G.dead)return;
+  log(`製作完成: <span style="color:#ffcc00">${item}</span> — ${rec.purpose||''}`,'ls');
+  if(rec.type==='weapon'){log(`提示: <span style="color:#39ff6e">eq ${item}</span> 裝備此武器。`,'lm');}
+  else if(rec.type==='armor'){log(`提示: <span style="color:#39ff6e">eq ${item}</span> 裝備此防具。`,'lm');}
+  else if(rec.type==='build'){G.built.push({x:G.px,y:G.py,type:item});log(`${item} 已建造於此處。`,'ls');}
+  else if(rec.type==='food_item'){log(`${item} 已放入背包，輸入 eat ${item} 食用。`,'lm');}
+  renderAll();
+}
+
+function doEquip(item){
+  if(!item){
+    const weapons=Object.keys(G.inv).filter(k=>WEAPON_ITEMS.has(k)&&G.inv[k]>0);
+    const armors =Object.keys(G.inv).filter(k=>ARMOR_ITEMS.has(k) &&G.inv[k]>0);
+    if(!weapons.length&&!armors.length){log('背包裡沒有可裝備的武器或防具。','lw');return;}
+    if(weapons.length)log(`可裝備的武器: ${weapons.join('、')}  → eq [名稱]`,'lm');
+    if(armors.length) log(`可裝備的防具: ${armors.join('、')}  → eq [名稱]`,'lm');
+    return;
+  }
+  if(!(G.inv[item]>0)){log(`背包裡沒有「${item}」。`,'lw');return;}
+  if(WEAPON_ITEMS.has(item)){
+    const old=G.equipped.weapon;G.equipped.weapon=item;
+    log(`武器已裝備: ${item}（ATK+${RECIPES[item]?.atk||0}）${old?` ← 替換了 ${old}`:''}`,'ls');
+  }else if(ARMOR_ITEMS.has(item)){
+    const old=G.equipped.armor;G.equipped.armor=item;
+    log(`防具已裝備: ${item}（DEF+${RECIPES[item]?.def||0}）${old?` ← 替換了 ${old}`:''}`,'ls');
+  }else{log(`「${item}」不是可裝備的武器或防具。`,'lw');return;}
+  renderAll();
+}
+
+function doBuild(stage){
+  if(isNaN(stage)){log('用法: b [1-6]  例: b 1','lw');return;}
+  if(stage!==G.shelterStage+1){log(`請先完成第${G.shelterStage+1}階段避難所。`,'lw');return;}
+  if(stage>6){log('避難所已完整建造！','ls');return;}
+  const st=STAGES[stage];
+  const miss=Object.entries(st.needs).filter(([k,v])=>(G.inv[k]||0)<v).map(([k,v])=>`${k}(缺${v-(G.inv[k]||0)})`);
+  if(miss.length){log(`材料不足: ${miss.join(', ')}`,'lw');return;}
+  Object.entries(st.needs).forEach(([k,v])=>remItem(k,v));G.shelterStage=stage;
+  tick(120);if(G.dead)return;
+  logSep();log(`避難所升級 → ${st.name}`,'ls');log(`解鎖: ${st.bonus}`,'lo');logSep();
+  if(stage===6&&G.day>=30&&!G.factionPhase)doWin();
+  else if(stage===6&&G.factionPhase){
+    log('永久營地完成！搜救隊正在趕來，繼續對抗外來威脅！','lo');
+    G.factions.rescue.speed+=5; // 加速搜救
+  }
+  else if(stage===6)log('永久營地完成！撐到第30天即可獲救。','lo');
+  else if(stage===5){log('信號台完成！現在去擊敗叢林巨獸 (at)，取得獸骨核心。','lb');activateFactionPhase();}
+  renderAll();
+}
+
+function doEat(item){
+  if(!item){const a=Object.keys(EDIBLE).find(k=>(G.inv[k]||0)>0);if(!a){log('背包裡沒有食物。','lw');return;}item=a;}
+  if(!(G.inv[item]>0)){log(`你沒有「${item}」。`,'lw');return;}
+  const val=EDIBLE[item];
+  if(!val){if(item==='蘑菇')log('生蘑菇有毒！先用火堆 c 蘑菇湯 再食用。','lw');else log(`「${item}」不是食物，試試 u ${item}。`,'lw');return;}
+  G.s.hunger=cl(G.s.hunger+val.hunger);if(val.thirst)G.s.thirst=cl(G.s.thirst+val.thirst);
+  log(`吃了 ${item}，飢餓+${val.hunger}${val.thirst?`，口渴+${val.thirst}`:''}。`,'ls');
+  remItem(item,1);tick(10);if(G.dead)return;renderAll();
+}
+
+function doDrink(){
+  if((G.inv['水']||0)>0){G.s.thirst=cl(G.s.thirst+50);remItem('水',1);log('你喝了背包裡的水，口渴緩解。','ls');}
+  else{log('背包裡沒有水了。','lw');log('提示: co 在河邊或下雨時收集水（需要木桶）。','lm');}
+  tick(10);if(G.dead)return;renderAll();
+}
+
+function doCollect(){
+  const t=G.map[G.py][G.px];const rain=G.weather==='rain'||G.weather==='storm';
+  let acted=false;
+  const pending=G.trapLoot.filter(tl=>tl.x===G.px&&tl.y===G.py);
+  if(pending.length>0){pending.forEach(tl=>{addItem(tl.prey,1);log(`從陷阱取得: ${tl.prey} ×1`,'ls');});G.trapLoot=G.trapLoot.filter(tl=>!(tl.x===G.px&&tl.y===G.py));acted=true;}
+  const needWater=t==='river'||rain;
+  if(needWater){
+    if(!hasBarrel()&&!hasTube()){log('需要先製作木桶才能收集水。(c 木桶，需要原木×3)','lw');if(!acted)return;}
+    else{
+      if(t==='river'){
+        if(hasTube()){addItem('水',3);log('竹水管淨化取水×3，無感染風險（存入背包）。','ls');}
+        else{addItem('水',2);log('用木桶在河邊取水×2（存入背包），未淨化有感染風險。','lw');if(Math.random()<0.2){G.infected=true;log('水源污染！腸胃感染。建議製作竹水管。','ld');}}
+        acted=true;
+      }else if(rain){addItem('水',1);log('用木桶收集了雨水×1（存入背包）。','ls');acted=true;}
+    }
+  }
+  if(!acted){log('這裡沒有可收集的東西。','lw');return;}
+  tick(10);if(G.dead)return;renderAll();
+}
+
+function doSleep(){
+  const fire=hasFire();const shelter=hasShelter();
+  log('你躺下休息...','lm');tick(480);if(G.dead)return;
+  let sleepGain,msg;
+  if(shelter&&fire){sleepGain=80;msg='舒適睡眠，精神飽滿。';}
+  else if(shelter){sleepGain=65;msg='在遮蔽下入睡，睡得還算好。';}
+  else if(G.hour>=20||G.hour<6){sleepGain=45;msg='野外露宿，睡眠品質較差。';}
+  else{sleepGain=20;msg='白天野外淺眠，幾乎沒有恢復。';}
+  G.s.sleep=cl(G.s.sleep+sleepGain);
+  log(msg,shelter?'ls':'lw');
+  if(!shelter)log('提示: b 1 建造臨時遮蔽可大幅提升睡眠品質。','lm');
+  renderAll();
+}
+
+function doUse(item){
+  if(!item){log('用法: u [物品]  例: u 蘆薈','lw');return;}
+  if(!(G.inv[item]>0)){log(`你沒有「${item}」。`,'lw');return;}
+  const fn=USABLE[item];if(!fn){log(`不知道如何使用「${item}」，也許可以 c 製作？`,'lw');return;}
+  const r=fn(G);if(r!==false)remItem(item,1);
+  tick(10);if(G.dead)return;renderAll();
+}
+
+function doMark(desc){
+  if(!desc){log('用法: mk [說明]  例: mk 這裡有BOSS','lw');return;}
+  const td=TR[G.map[G.py][G.px]];G.marks.push({x:G.px,y:G.py,day:G.day,terrain:td?.lb||'未知',desc});
+  log(`📍 已標記 (${G.px},${G.py}) [${td?.lb}]: ${desc}`,'ls');
+}
+function doMarks(){
+  if(!G.marks.length){log('尚未設置任何標記。使用 mk [說明] 新增。','lm');return;}
+  logSep();log('─ 所有標記 ─','lx');
+  G.marks.forEach((m,i)=>log(`${i+1}. (${m.x},${m.y}) [${m.terrain}] 第${m.day}天 — ${m.desc}`,'li'));
+  logSep();
+}
+
+function doDeath(){if(G.dead)return;G.dead=true;logSep();log('你在叢林中倒下了。','ld');log(`存活了 ${G.day} 天，避難所第${G.shelterStage}階段。`,'lm');log('輸入 restart 重新開始。','lx');logSep();}
+function doWin(){
+  if(G.won)return;G.won=true;
+  const ef=G.endingFlags||{};
+  let title,body;
+  if(ef.miningExposed&&ef.mercDefeated&&ef.blackboxHeard){
+    title='真相大白';
+    body=`第 ${G.day} 天，直升機降落在你的永久營地。\n\n你帶著黑盒子、傭兵合約與採礦證據走出叢林。\n\n陳思雨的報導已在全球引發軒然大波。\n鐵爪公司高層被捕，幕後主謀被引渡。\n那場「意外」的真相，終於公諸於世。\n\n你的故事改變了這片叢林的命運。\n\n🏆 隱藏結局：真相大白`;
+  }else if(ef.miningExposed&&ef.mercDefeated){
+    title='英雄歸來';
+    body=`第 ${G.day} 天，救援直升機抵達。\n\n你擊敗了傭兵，曝光了採礦集團。\n叢林終於歸於平靜。\n\n🥇 優良結局：英雄歸來`;
+  }else if(ef.blackboxLost){
+    title='獲救了';
+    body=`第 ${G.day} 天，直升機來了。\n\n你活下來了，但交出的黑盒子讓真相永遠沉入叢林深處。\n\n有些事，從此再也無人知曉。\n\n📦 普通結局（黑盒子遺失）`;
+  }else{
+    title='獲救了！';
+    body=`第 ${G.day} 天，救援直升機的聲音從天際傳來。\n\n你的求救信號台閃爍著光芒，\n引導飛機降落在你親手建造的永久營地上。\n\n你回頭看了一眼叢林巨獸倒下的位置，\n踏上了回家的路。\n\n恭喜完成 JUNGLE！`;
+  }
+  showModal(title,body);
+}
+function showModal(t,b){document.getElementById('mtitle').textContent=t;document.getElementById('mbody').innerHTML=b.replace(/\n/g,'<br>');document.getElementById('modal').classList.add('show');}
+function closeModal(){document.getElementById('modal').classList.remove('show');}
+
+// ═══════════════════════════════════
+// CMD PARSER
+// ═══════════════════════════════════
+const ALIASES={
+  n:'go n',s:'go s',e:'go e',w:'go w',
+  ex:'explore',l:'look',d:'drink',co:'collect',sl:'sleep',
+  at:'attack',st:'status',mk:'mark',mks:'marks',eq:'equip',
+  inv:'investigate',exp:'expose',tr:'track',amb:'ambush',
+  '?':'help',h:'help',
+};
+const NO_RECORD=new Set(['help','status','marks','?','h','st','mks','look','l']);
+
+function repeatLastCmd(){if(!lastCmd){log('尚未有指令可重複。','lm');return;}processCmd(lastCmd);}
+function submitCmd(){const el=document.getElementById('inp');processCmd(el.value);el.value='';el.focus();}
+
+function processCmd(raw){
+  if(!raw.trim()){if(lastCmd)repeatLastCmd();return;}
+  if(raw.trim()==='!!'){repeatLastCmd();return;}
+  let parts=raw.trim().split(/\s+/),cmd=parts[0].toLowerCase(),arg=parts.slice(1).join(' ');
+  if(ALIASES[cmd]){const ex=ALIASES[cmd].split(' ');cmd=ex[0];if(ex[1]&&!arg)arg=ex[1];}
+  if(cmd==='c'&&arg)cmd='craft';
+  if(cmd==='b'&&arg)cmd='build';
+  if(cmd==='u'&&arg)cmd='use';
+  if(!NO_RECORD.has(cmd)){lastCmd=raw.trim();updateLastCmdBar();}
+  log(`<span style="color:var(--td)">></span> ${raw}`,'lm');
+  if(G?.dead||G?.won){if(cmd==='restart'||cmd==='new')restartGame();else log('遊戲已結束。輸入 restart 重新開始。','lm');return;}
+  switch(cmd){
+    case 'go':doMove(arg.toLowerCase());break;
+    case 'look':tick(10,false);descLoc();renderAll();break; // look 不觸發 BOSS 被動
+    case 'explore':doExplore();break;
+    case 'craft':doCraft(arg);break;
+    case 'equip':doEquip(arg||null);break;
+    case 'build':doBuild(parseInt(arg));break;
+    case 'eat':doEat(arg||null);break;
+    case 'drink':doDrink();break;
+    case 'collect':doCollect();break;
+    case 'sleep':doSleep();break;
+    case 'use':doUse(arg);break;
+    case 'attack':doAttack();break;
+    case 'investigate':doInvestigate();break;
+    case 'expose':doExpose();break;
+    case 'track':doTrack();break;
+    case 'ambush':doAmbush();break;
+    case 'mark':doMark(arg);break;
+    case 'marks':doMarks();break;
+    case 'status':
+      logSep();
+      log(`HP:${Math.round(G.s.hp)} 飢餓:${Math.round(G.s.hunger)} 口渴:${Math.round(G.s.thirst)} 睡眠:${Math.round(G.s.sleep)}`,'li');
+      log(`感染:${G.infected?'是':'否'} ATK:${getAtk()} DEF:${getDef()}`,'li');
+      log(`位置:(${G.px},${G.py}) 第${G.day}天 避難所:${STAGES[G.shelterStage]?.name}`,'li');
+      if(!G.bossDefeated)log(`叢林巨獸 HP:${G.bossHp}/${BOSS_MAX_HP}${bossRage()?' 【狂暴】':''}`,'lb');
+      else log('叢林巨獸: 已討伐 ✓','ls');
+      if(G.trapLoot.length)log(`陷阱待取: ${G.trapLoot.map(t=>`(${t.x},${t.y}) ${t.prey}`).join(' | ')}`,'lo');
+      if(G.factionPhase&&G.factions){
+        logSep();log('─ 勢力狀態 ─','lo');
+        const F=G.factions;
+        log(`🔴 採礦集團: ${F.mining.eliminated?'已消滅 ✓':`進度 ${Math.round(F.mining.progress)}%（證據${F.mining.evidenceCount}/3）`}`,'lo');
+        log(`🔴 傭兵鬼臉: ${F.merc.eliminated?'已擊敗 ✓':`進度 ${Math.round(F.merc.progress)}%（追蹤${F.merc.trackCount}/3）`}`,'lo');
+        log(`🦠 叢林瘟疫: ${F.plague.eliminated?'已消滅 ✓':`進度 ${Math.round(F.plague.progress)}%${F.plague.filterCrafted?' [免疫中]':''}`}`,'lo');
+        log(`🟦 搜救隊:   進度 ${Math.round(F.rescue.progress)}%${F.rescue.blocked?' [受阻]':''}`,'lx');
+        const ef=G.endingFlags||{};
+        log(`結局旗標: 曝光[${ef.miningExposed?'✓':'✗'}] 擊敗傭兵[${ef.mercDefeated?'✓':'✗'}] 黑盒子[${ef.blackboxHeard?'✓':'✗'}]`,'lm');
+      }
+      logSep();break;
+    case 'help':
+      logSep();log('─ 指令（短 / 完整）─','lx');
+      [['n s e w','go n/s/e/w','移動方向（北=y+，南=y−）'],
+       ['ex','explore','探索採集（睡眠<20效率減半）'],
+       ['l','look','查看地形、資源（不觸發BOSS攻擊）'],
+       ['c [物品]','craft [物品]','製作物品（武器/防具需 eq 裝備）'],
+       ['eq [物品]','equip [物品]','裝備武器或防具'],
+       ['b [1-6]','build [1-6]','升級避難所'],
+       ['eat','eat [食物]','吃東西'],['d','drink','喝水'],
+       ['co','collect','取水（需木桶）；取陷阱獵物'],
+       ['sl','sleep','睡覺'],['u [物品]','use [物品]','使用道具'],
+       ['at','attack','在BOSS領地主動攻擊一次'],
+       ['st','status','詳細狀態'],['mk [說明]','mark [說明]','標記當前位置'],
+       ['mks','marks','顯示所有標記'],['!!','!!','重複上一個指令'],
+       ['','restart','重新開始'],['?','help','顯示此說明'],
+      ].forEach(([s,f,d])=>{const sc=s?`<span style="color:#39ff6e">${s}</span> / `:'       ';log(`${sc}<span style="color:#5a9a6a">${f}</span> — ${d}`,'li');});
+      logSep();
+      log('─ 武器升級路線 ─','lo');
+      log('燧石刀(7) → 竹矛(10)【消耗燧石刀】→ 石斧(13) → 金屬刀(18)【消耗石斧】','lm');
+      log('─ 防具升級路線 ─','lo');
+      log('棕葉甲(4) → 竹甲(8)【消耗棕葉甲】→ 獸皮甲(12)【消耗竹甲】','lm');
+      log('防水披風(3) 獨立路線 ｜ 傭兵裝甲(15) 擊敗鬼臉取得','lm');logSep();
+      log('─ BOSS 說明 ─','lb');
+      log(`HP:${BOSS_MAX_HP} ATK:${BOSS_ATK} DEF:${BOSS_DEF}，HP<${BOSS_RAGE_HP}時狂暴 ATK→${BOSS_ATK_RAGE}`,'lm');
+      log(`在 B 格任何行動（除 l/st/?）均觸發被動攻擊 ATK:${BOSS_PASSIVE_ATK}（狂暴:${BOSS_PASSIVE_ATK_RAGE}）`,'lm');
+      log('每次反擊 30% 感染機率，at 主動攻擊為雙方互打','lm');logSep();
+      log('─ 通關路線 ─','lo');
+      log('b1→b2→b3→b4→b5 → 擊敗BOSS (at) → b6 → 第30天獲救','lm');
+      log('b5完成後：勢力系統啟動，外來威脅開始計時！','ld');logSep();
+      if(G.factionPhase){
+        log('─ 勢力指令 ─','lo');
+        [['inv','investigate','調查採礦集團（殘骸/山坡），蒐集證據'],
+         ['exp','expose','曝光集團（需3份證據+信號台）'],
+         ['tr','track','追蹤傭兵鬼臉（叢林/山坡），累積3次後可伏擊'],
+         ['amb','ambush','伏擊傭兵（需track×3，HP>60，有武器）'],
+         ['u 黑盒子','use 黑盒子','播放黑盒子錄音（隱藏結局線索）'],
+         ['c 草藥過濾器','craft 草藥過濾器','對抗叢林瘟疫（藥草×4+竹子×2+繩索×1）'],
+        ].forEach(([s,f,d])=>{const sc=`<span style="color:#ff6633">${s}</span> / `;log(`${sc}<span style="color:#5a9a6a">${f}</span> — ${d}`,'li');});
+        logSep();
+        log('─ 多結局條件 ─','lo');
+        log('普通結局: b6+第30天','lm');
+        log('英雄結局: 曝光集團(expose) + 擊敗傭兵(ambush)','lm');
+        log('隱藏結局: 英雄結局 + 聆聽黑盒子(u 黑盒子)','lb');
+        logSep();
+      }
+      break;
+    case 'restart':case 'new':restartGame();break;
+    default:log(`未知指令「${cmd}」，輸入 ? 查看說明。`,'lw');
+  }
+}
+
+function restartGame(){document.getElementById('log').innerHTML='';closeModal();lastCmd='';updateLastCmdBar();newGame();}
+document.addEventListener('DOMContentLoaded',()=>{
+  const inp=document.getElementById('inp');
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter')submitCmd();});
+  document.addEventListener('click',e=>{if(!e.target.closest('#modal')&&!e.target.closest('#tabs')&&!e.target.closest('#inp-btn')&&!e.target.closest('#last-cmd-btn'))inp.focus();});
+  newGame();
+});
+</script>
+</body>
+</html>

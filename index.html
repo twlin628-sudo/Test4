@@ -716,14 +716,14 @@ function factionDailyTick(){
       if(F.journalist.route==='ally')spd+=F.journalist.reportCount*2;
       // 記者懷疑減速（對立路線）
       if(F.journalist.route==='hostile')spd-=F.journalist.suspicionCount;
-      F.rescue.progress=Math.min(99,F.rescue.progress+Math.max(0,spd));
+      F.rescue.progress=Math.min(100,F.rescue.progress+Math.max(0,spd));
     }
   }
 
   // ── 記者陳思雨推進 ──
   if(F.journalist.active&&F.journalist.relationship!=='dead'){
-    // 啟動第1天立刻觸發到達事件
-    if(!F.journalist.thresholds[0].triggered){
+    // 啟動後第2天觸發到達（給玩家一天緩衝）
+    if(!F.journalist.thresholds[0].triggered&&G.day>=F.journalist.arriveDay){
       F.journalist.thresholds[0].triggered=true;
       triggerFactionEvent('journalist_arrive',F.journalist);
     }
@@ -924,7 +924,18 @@ function triggerFactionEvent(id,fac){
       logSep();log('📻 無線電雜訊中聽到人聲！','ls');
       log('搜救隊已非常接近，預計1~3天內抵達。','lo');logSep();break;
     case 'rescue_arrive':
-      doWin();break;
+      if(G.shelterStage>=6)doWin();
+      else{
+        logSep();
+        log('🚁 直升機抵達你的位置！','ls');
+        log('但永久營地尚未完成，飛行員無法降落。','ld');
+        log('「我們會繼續盤旋等你！趕緊完成營地！」','lx');
+        log('立刻 b 6 完成永久營地即可獲救！','lo');
+        logSep();
+        // 讓搜救進度停在100%，等b6完成後每天重新觸發
+        G.factions.rescue.waitingForB6=true;
+      }
+      break;
 
     // ── 記者陳思雨 ──
     case 'journalist_arrive':
@@ -1436,6 +1447,7 @@ function activateFactionPhase(){
   G.factions.plague.active=true;
   G.factions.rescue.active=true;
   G.factions.journalist.active=true;
+  G.factions.journalist.arriveDay=G.day+1; // 啟動後隔天出現
   G.factions.tribal.active=true;
   G.endingFlags={};
   logSep();
@@ -1638,10 +1650,8 @@ function tick(mins=30,triggerBossPassive=true){
     }
     if(G.day>=30&&G.shelterStage>=6&&!G.factionPhase)doWin();
     else if(G.day>=30&&G.shelterStage>=6&&G.factionPhase){
-      // 勢力階段：搜救進度條達到100才觸發結局
-      // （由 rescue_arrive 事件觸發，這裡只做備援）
       if(G.factions&&G.factions.rescue.progress>=100)doWin();
-      else if(G.day>=35){log('你已等待太久...體力耗盡。','ld');doDeath();}
+      // 不再有強制死亡，讓搜救隊自然推進
     }
     else if(G.day>=30&&G.shelterStage>=5)log('信號台已完成！打倒叢林巨獸並完成永久營地才能獲救。','lo');
     else if(G.day>=30)log('救援直升機飛過但未發現你...','ld');
@@ -1861,8 +1871,9 @@ function doBuild(stage){
   logSep();log(`避難所升級 → ${st.name}`,'ls');log(`解鎖: ${st.bonus}`,'lo');logSep();
   if(stage===6&&G.day>=30&&!G.factionPhase)doWin();
   else if(stage===6&&G.factionPhase){
-    log('永久營地完成！搜救隊正在趕來，繼續對抗外來威脅！','lo');
-    G.factions.rescue.speed+=5; // 加速搜救
+    if(G.factions&&G.factions.rescue.progress>=100)doWin();
+    else log('永久營地完成！搜救隊正在趕來，繼續對抗外來威脅！','lo');
+    G.factions.rescue.speed+=5;
   }
   else if(stage===6)log('永久營地完成！撐到第30天即可獲救。','lo');
   else if(stage===5){log('信號台完成！現在去擊敗叢林巨獸 (at)，取得獸骨核心。','lb');activateFactionPhase();}

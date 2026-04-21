@@ -1476,6 +1476,7 @@ function newGame(){
     marks:[],trapLoot:[],
     bossHp:BOSS_MAX_HP,bossDefeated:false,
     factionPhase:false,factions:null,endingFlags:{},
+    _dev:false,
   };
   lastCmd='';updateLastCmdBar();
   reveal(sx,sy,2);
@@ -1814,8 +1815,9 @@ function doCraft(item){
   const rec=RECIPES[item];if(!rec){log(`不知道如何製作「${item}」，查看配方面板。`,'lw');return;}
   if(NEED_FIRE.has(item)&&!hasFire()){log(`製作「${item}」需要先在此處建造火堆。(c 火堆)`,'lw');return;}
   const miss=Object.entries(rec.needs).filter(([k,v])=>(G.inv[k]||0)<v).map(([k,v])=>`${k}(缺${v-(G.inv[k]||0)})`);
-  if(miss.length){log(`材料不足: ${miss.join(', ')}`,'lw');return;}
-  Object.entries(rec.needs).forEach(([k,v])=>remItem(k,v));Object.entries(rec.gives).forEach(([k,v])=>addItem(k,v));
+  if(miss.length&&!G._dev){log(`材料不足: ${miss.join(', ')}`,'lw');return;}
+  if(!G._dev)Object.entries(rec.needs).forEach(([k,v])=>remItem(k,v));
+  Object.entries(rec.gives).forEach(([k,v])=>addItem(k,v));
   tick(60);if(G.dead)return;
   log(`製作完成: <span style="color:#ffcc00">${item}</span> — ${rec.purpose||''}`,'ls');
   if(rec.type==='weapon'){log(`提示: <span style="color:#39ff6e">eq ${item}</span> 裝備此武器。`,'lm');}
@@ -1851,8 +1853,9 @@ function doBuild(stage){
   if(stage>6){log('避難所已完整建造！','ls');return;}
   const st=STAGES[stage];
   const miss=Object.entries(st.needs).filter(([k,v])=>(G.inv[k]||0)<v).map(([k,v])=>`${k}(缺${v-(G.inv[k]||0)})`);
-  if(miss.length){log(`材料不足: ${miss.join(', ')}`,'lw');return;}
-  Object.entries(st.needs).forEach(([k,v])=>remItem(k,v));G.shelterStage=stage;
+  if(miss.length&&!G._dev){log(`材料不足: ${miss.join(', ')}`,'lw');return;}
+  if(!G._dev)Object.entries(st.needs).forEach(([k,v])=>remItem(k,v));
+  G.shelterStage=stage;
   if(G.factionPhase)addTrespass(5); // 蓋房子侵犯領地
   tick(120);if(G.dead)return;
   logSep();log(`避難所升級 → ${st.name}`,'ls');log(`解鎖: ${st.bonus}`,'lo');logSep();
@@ -2094,6 +2097,10 @@ function processCmd(raw){
       }
       break;
     case 'restart':case 'new':restartGame();break;
+    case 'xyzzy':
+      G._dev=!G._dev;
+      log(G._dev?'// [D] ON':'// [D] OFF','lp');
+      break;
     default:log(`未知指令「${cmd}」，輸入 ? 查看說明。`,'lw');
   }
 }

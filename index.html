@@ -109,6 +109,7 @@ body::before{
 .fbar-inner{height:100%;border-radius:2px;transition:width 0.4s;}
 .fpct{text-align:right;font-size:10px;}
 .fc-mining{color:#ff6633;}.fc-merc{color:#ff3355;}.fc-plague{color:#bb88ff;}.fc-rescue{color:#33ccff;}
+.fc-journalist{color:#ffdd44;}.fc-tribal{color:#44ffcc;}
 .choice-box{background:#0a1a0a;border:1px solid var(--bd2);padding:8px 10px;margin:4px 0;border-radius:3px;font-size:13px;}
 .choice-btn{display:inline-block;background:var(--bg3);border:1px solid var(--bd2);color:var(--g);font-family:'Share Tech Mono',monospace;font-size:12px;padding:3px 10px;margin:3px 4px 3px 0;cursor:pointer;border-radius:2px;}
 .choice-btn:active{background:var(--bd2);}
@@ -408,6 +409,45 @@ const FACTIONS={
       {pct:100,triggered:false, id:'rescue_arrive'},
     ]
   },
+  // ── 記者陳思雨 ──
+  // 設計核心：玩家的「第一印象」選擇決定她整條路線走向。
+  // 她不依賴進度條威脅，而是透過「她在做什麼」間接影響所有其他勢力。
+  // 路線A（盟友）：她調查集團，成為你的外部力量，但也讓你承擔保護她的代價。
+  // 路線B（對立）：她開始懷疑你，報導干擾搜救，但她同時也會無意中幫到你。
+  journalist:{
+    id:'journalist', name:'記者陳思雨', shortName:'記者',
+    color:'#ffdd44', cls:'fc-journalist',
+    active:false, progress:0, speed:0, eliminated:false,
+    relationship:'unknown', // unknown / ally / hostile / dead
+    route:null,             // null / 'ally' / 'hostile'
+    contactDay:0,
+    protected:false,        // 玩家曾保護過她
+    reportCount:0,          // 她發出的報導數（盟友路線加速搜救）
+    suspicionCount:0,       // 她的懷疑累積（對立路線減速搜救）
+    attacked:false,         // 玩家曾攻擊過她
+    thresholds:[
+      {pct:0,  triggered:false, id:'journalist_arrive'},   // 啟動後立刻觸發
+      {pct:40, triggered:false, id:'journalist_mid'},       // 中期事件
+      {pct:80, triggered:false, id:'journalist_climax'},    // 高潮事件
+    ]
+  },
+  // ── 原住民部落「霧林人」──
+  // 設計核心：不用進度條威脅，改用「領地侵犯值」反向設計。
+  // 玩家越積極求生（採集/蓋房/戰鬥），侵犯值越高，部落越憤怒。
+  // 這造成一個真實的道德張力：你為了活下去所做的每件事，都在傷害他們的家。
+  // 化解衝突的方式也對應現實：停止侵犯、主動獻祭資源、尋求溝通。
+  tribal:{
+    id:'tribal', name:'霧林人部落', shortName:'霧林人',
+    color:'#44ffcc', cls:'fc-tribal',
+    active:false, progress:0, speed:0, eliminated:false,
+    relationship:'neutral', // neutral / wary / hostile / ally
+    trespass:0,             // 領地侵犯值 0~100
+    warningGiven:false,
+    elderMet:false,
+    allyGranted:false,      // 取得叢林通行令
+    offerCooldown:0,        // 獻祭冷卻
+    thresholds:[]           // 霧林人改用 trespass 值觸發，不用 progress
+  },
 };
 
 // 每天勢力推進（在 tick 跨天時呼叫）
@@ -441,8 +481,62 @@ function factionDailyTick(){
       if(!F.mining.eliminated&&F.mining.progress>=60)spd-=3;
       // 合流凍結
       if(F.merc.progress>=100&&!F.merc.eliminated)spd=0;
+      // 記者報導加速（盟友路線）
+      if(F.journalist.route==='ally')spd+=F.journalist.reportCount*2;
+      // 記者懷疑減速（對立路線）
+      if(F.journalist.route==='hostile')spd-=F.journalist.suspicionCount;
       F.rescue.progress=Math.min(99,F.rescue.progress+Math.max(0,spd));
     }
+  }
+
+  // ── 記者陳思雨推進 ──
+  if(F.journalist.active&&F.journalist.relationship!=='dead'){
+    // 啟動第1天立刻觸發到達事件
+    if(!F.journalist.thresholds[0].triggered){
+      F.journalist.thresholds[0].triggered=true;
+      triggerFactionEvent('journalist_arrive',F.journalist);
+    }
+    // 每天根據路線推進內部進度
+    if(F.journalist.route==='ally'){
+      F.journalist.progress=Math.min(100,F.journalist.progress+15);
+      // 每3天發出一篇報導（加速搜救）
+      if(G.day>F.journalist.contactDay&&(G.day-F.journalist.contactDay)%3===0){
+        F.journalist.reportCount++;
+        const reportMsgs=[
+          '📰 陳思雨發出第一篇報導，外界開始關注這片叢林。',
+          '📰 陳思雨的追蹤報導引發國際媒體跟進，搜救壓力增加。',
+          '📰 陳思雨的深度調查在網路上瘋傳，政府被迫加速搜救行動。',
+        ];
+        log(reportMsgs[Math.min(F.journalist.reportCount-1,reportMsgs.length-1)],'lo');
+      }
+      // 若集團進度>60，她面臨危險
+      if(!F.mining.eliminated&&F.mining.progress>=60&&!F.journalist.thresholds[1].triggered){
+        F.journalist.thresholds[1].triggered=true;
+        triggerFactionEvent('journalist_mid',F.journalist);
+      }
+      if(!F.mining.eliminated&&F.mining.progress>=90&&!F.journalist.thresholds[2].triggered){
+        F.journalist.thresholds[2].triggered=true;
+        triggerFactionEvent('journalist_climax',F.journalist);
+      }
+    }else if(F.journalist.route==='hostile'){
+      F.journalist.progress=Math.min(100,F.journalist.progress+10);
+      // 每2天累積一次懷疑，干擾搜救
+      if(G.day>F.journalist.contactDay&&(G.day-F.journalist.contactDay)%2===0){
+        F.journalist.suspicionCount=Math.min(5,F.journalist.suspicionCount+1);
+        if(F.journalist.suspicionCount<=3)
+          log(`📰 陳思雨的報導語氣越來越不利於你...搜救隊開始猶豫。`,'lw');
+      }
+      // 對立路線她也在挖集團的料，有機率意外幫助
+      if(!F.mining.eliminated&&Math.random()<0.12){
+        F.mining.progress=Math.max(0,F.mining.progress-8);
+        log('📰 陳思雨在追查另一條線索時意外曝光了採礦集團部分資訊。','lo');
+      }
+    }
+  }
+
+  // ── 霧林人每日處理 ──
+  if(F.tribal.active){
+    tribalDailyCheck();
   }
 
   // 檢查閾值觸發
@@ -600,6 +694,53 @@ function triggerFactionEvent(id,fac){
       log('搜救隊已非常接近，預計1~3天內抵達。','lo');logSep();break;
     case 'rescue_arrive':
       doWin();break;
+
+    // ── 記者陳思雨 ──
+    case 'journalist_arrive':
+      logSep();
+      log('👩 一個背著相機的女人從樹叢走出，舉起雙手示意無害。','lo');
+      log('「我叫陳思雨，自由記者。我追採礦醜聞追到這裡。」','lx');
+      log('「你是墜機的倖存者吧？我聽到了你的信號。」','lx');
+      log('她看起來疲憊但眼神銳利。她有乾糧和衛星電話。','lm');
+      G.factions.journalist.contactDay=G.day;
+      log('選擇你的第一反應：','lm');
+      log('<span class="choice-btn" onclick="factionChoice(\'journalist_arrive\',\'trust\')">[ 信任她，分享遭遇 ]</span> <span class="choice-btn yellow" onclick="factionChoice(\'journalist_arrive\',\'cautious\')">[ 保持警惕，問她目的 ]</span> <span class="choice-btn red" onclick="factionChoice(\'journalist_arrive\',\'drive_away\')">[ 驅逐她 ]</span>','li');
+      logSep();break;
+
+    case 'journalist_mid':
+      // 盟友路線中期：集團威脅到她
+      logSep();
+      log('⚠ 陳思雨急匆匆跑回你的營地，臉上有傷。','ld');
+      log('「他們發現我了。鐵爪的人，就在林子邊緣。」','lx');
+      log('「我有他們非法採礦的完整照片，但他們要奪走相機。」','lx');
+      log('選擇: <span class="choice-btn" onclick="factionChoice(\'journalist_mid\',\'protect\')">[ 保護她，一起對抗 ]</span> <span class="choice-btn yellow" onclick="factionChoice(\'journalist_mid\',\'hide\')">[ 叫她躲起來 ]</span> <span class="choice-btn red" onclick="factionChoice(\'journalist_mid\',\'abandon\')">[ 你不是我的責任 ]</span>','li');
+      logSep();break;
+
+    case 'journalist_climax':
+      // 盟友路線高潮：集團要殺她
+      if(G.factions.journalist.protected){
+        logSep();
+        log('🔥 集團殺手包圍了你們的營地！','ld');
+        log('陳思雨：「我的報導已經傳出去了。就算我死，也會有人繼續。」','lx');
+        log('這是最後一戰——擊退集團，或一切到此為止。','ld');
+        // 強制戰鬥事件
+        const dmg=Math.max(1,20-Math.floor(getDef()/2));
+        G.s.hp=cl(G.s.hp-dmg);
+        log(`集團殺手突襲！-${dmg} HP。你們聯手擊退了他們。`,'ld');
+        G.factions.mining.progress=Math.max(0,G.factions.mining.progress-25);
+        log('採礦集團在輿論和武力雙重打擊下開始動搖。進度大幅倒退。','ls');
+        G.endingFlags=G.endingFlags||{};G.endingFlags.journalistProtected=true;
+        logSep();
+      }else{
+        logSep();
+        log('💀 你接到一個陌生訊號——是陳思雨的衛星電話。','ld');
+        log('「她不再需要這支電話了。」一個陌生男聲說完便掛斷。','lb');
+        log('陳思雨已死。你的搜救進度喪失了她帶來的加成。','ld');
+        G.factions.journalist.relationship='dead';
+        G.factions.journalist.reportCount=0;
+        logSep();
+      }
+      break;
   }
 }
 
@@ -618,6 +759,166 @@ function mercDailyAction(){
     log(`⚔ 鐵爪武裝小隊發動攻擊！-${dmg} HP。`,'ld');
     if(G.s.hp<=0){doDeath();return;}
   }
+}
+
+// ═══════════════════════════════════
+// 原住民部落「霧林人」系統
+// 設計核心：領地侵犯值 0~100
+// 玩家求生行為本身就在累積侵犯值，形成生存與道德的內在矛盾。
+// ═══════════════════════════════════
+function tribalDailyCheck(){
+  const T=G.factions.tribal;
+  if(T.allyGranted)return; // 已成為盟友，不再觸發
+
+  // 侵犯值自然緩慢衰減（停止侵犯時回復關係）
+  if(T.trespass>0)T.trespass=Math.max(0,T.trespass-2);
+  if(T.offerCooldown>0)T.offerCooldown--;
+
+  // 根據侵犯值判斷關係等級
+  const prev=T.relationship;
+  if(T.trespass<20)T.relationship='neutral';
+  else if(T.trespass<40)T.relationship='wary';
+  else if(T.trespass<70)T.relationship='hostile';
+  else T.relationship='siege';
+
+  // 關係惡化時給警告
+  if(prev==='neutral'&&T.relationship==='wary'&&!T.warningGiven){
+    T.warningGiven=true;
+    logSep();
+    log('🌿 探索時，你注意到樹上刻著奇怪的符號...','lm');
+    log('像是一個手掌，下面畫了幾條橫線。','lm');
+    log('這片叢林並不是無人之地。有人在警告你。','lw');
+    log('提示: 減少在雨林採集，或使用 <span style="color:#44ffcc">offer</span> 獻祭資源安撫。','lm');
+    logSep();
+  }
+
+  // 敵對時每天有機率觸發警告伏擊
+  if(T.relationship==='hostile'&&Math.random()<0.3){
+    const dmg=Math.max(1,10-Math.floor(getDef()/2));
+    G.s.hp=cl(G.s.hp-dmg);
+    logSep();
+    log('🏹 樹叢中飛來一支箭！','ld');
+    log('霧林人的警告：這片土地不屬於你。受傷 -'+dmg+' HP。','ld');
+    log('繼續侵犯將導致全面圍攻。使用 <span style="color:#44ffcc">offer</span> 或停止採集來緩和。','lw');
+    logSep();
+    if(G.s.hp<=0){doDeath();return;}
+  }
+
+  // 圍攻狀態：每天強制觸發戰鬥
+  if(T.relationship==='siege'){
+    const dmg=Math.max(1,18-Math.floor(getDef()/2));
+    G.s.hp=cl(G.s.hp-dmg);
+    logSep();
+    log('🔥 霧林人全面圍攻你的營地！','ld');
+    log('你無處可逃，只能硬撐。受傷 -'+dmg+' HP。','ld');
+    log('⚠ 唯一出路: offer 大量資源，或尋找長老 gesture 溝通。','ld');
+    logSep();
+    if(G.s.hp<=0){doDeath();return;}
+  }
+
+  // 若採礦集團被曝光，霧林人感受到共同敵人消失，主動接觸
+  if(G.factions.mining.eliminated&&!T.elderMet&&T.trespass<50){
+    T.elderMet=true;
+    logSep();
+    log('🌿 一位老者從叢林深處緩步走出。','lo');
+    log('他沒有武器，只是靜靜地看著你，然後看向你的避難所。','lm');
+    log('他指向地平線，又指向自己的心，再指向你。','lm');
+    log('你不懂他的語言，但意思很清楚：「這片土地是我們共同的。」','lo');
+    log('使用 <span style="color:#44ffcc">gesture</span> 回應，完全化解敵意。','ls');
+    logSep();
+  }
+}
+
+// 玩家行動增加侵犯值（在 doExplore 裡呼叫）
+function addTrespass(amount){
+  if(!G.factionPhase||!G.factions.tribal.active)return;
+  const T=G.factions.tribal;
+  if(T.allyGranted)return;
+  T.trespass=Math.min(100,T.trespass+amount);
+}
+
+// offer 指令：獻祭資源安撫霧林人
+function doOffer(){
+  if(!G.factionPhase){log('目前無法使用此指令。','lm');return;}
+  const T=G.factions.tribal;
+  if(T.allyGranted){log('霧林人已是你的盟友，無需再獻祭。','ls');return;}
+  if(T.trespass<15){log('霧林人目前沒有敵意，不需要獻祭。','lm');return;}
+  if(T.offerCooldown>0){log(`獻祭冷卻中，還需 ${T.offerCooldown} 天。`,'lw');return;}
+
+  // 計算玩家可以獻祭的資源
+  const offerItems=['野果','香蕉','藥草','魚','蘑菇'];
+  const available=offerItems.filter(k=>(G.inv[k]||0)>=2);
+  if(available.length===0){
+    log('獻祭需要至少2份食物類資源（野果、香蕉、藥草、魚或蘑菇）。','lw');
+    return;
+  }
+
+  // 消耗資源
+  const used=[];
+  let totalOffered=0;
+  available.forEach(k=>{
+    const amt=Math.min(G.inv[k]||0,3);
+    remItem(k,amt);used.push(`${k}×${amt}`);totalOffered+=amt;
+  });
+
+  const reduction=Math.min(T.trespass,totalOffered*8);
+  T.trespass=Math.max(0,T.trespass-reduction);
+  T.offerCooldown=2;
+
+  logSep();
+  log(`🌿 你將 ${used.join('、')} 放置在符文樹下，退後等待。`,'lo');
+  tick(30);if(G.dead)return;
+  log('夜深後，東西消失了。樹上的符號少了一條橫線。','lm');
+  log(`侵犯值降低 ${Math.round(reduction)}，關係：${tribalRelationLabel(T.relationship)}`,'ls');
+
+  if(T.trespass<20&&T.elderMet&&!T.allyGranted){
+    // 觸發盟友化
+    T.allyGranted=true;
+    T.relationship='ally';
+    setTimeout(()=>{
+      logSep();
+      log('🌟 長老再次現身。這次他帶來了一樣東西——','lo');
+      log('一個用藤蔓和羽毛編成的護符，繫在你的手腕上。','lo');
+      log('「叢林通行令」取得！','ls');
+      addItem('叢林通行令',1);
+      log('持有時：雨林地形探索不觸發負面事件，且BOSS弱點揭露。','ls');
+      log('長老用手比劃：巨獸懼火。在BOSS格建造火堆，被動傷害降低30%。','lo');
+      G.endingFlags=G.endingFlags||{};G.endingFlags.tribalAlly=true;
+      logSep();
+    },100);
+  }
+  renderFactionBar();renderAll();
+}
+
+// gesture 指令：與長老溝通
+function doGesture(){
+  if(!G.factionPhase){log('目前無法使用此指令。','lm');return;}
+  const T=G.factions.tribal;
+  if(T.allyGranted){log('你已與霧林人達成和解。','ls');return;}
+  if(!T.elderMet){log('你還沒有遇見過霧林人的長老。繼續在這片土地上生活，降低侵犯值，等待他出現。','lm');return;}
+  if(T.trespass>=50){log('你與霧林人的關係太緊張，長老不願意溝通。先透過 offer 降低敵意。','lw');return;}
+
+  logSep();
+  log('🌿 你用最緩慢、最無害的方式走向長老，雙手空空地張開。','lo');
+  tick(60);if(G.dead)return;
+  log('他看了你很久。','lm');
+  log('然後，他把一根刻著圖案的樹枝遞給你。','lo');
+  log('你們之間沒有共同語言，但這一刻你理解了：','lm');
+  log('他不是要你離開。他只是要你懂得分寸。','lo');
+
+  T.allyGranted=true;
+  T.relationship='ally';
+  T.trespass=0;
+  addItem('叢林通行令',1);
+  log('「叢林通行令」取得！','ls');
+  log('持有時：雨林地形探索不觸發負面事件，BOSS弱點揭露（懼火）。','ls');
+  G.endingFlags=G.endingFlags||{};G.endingFlags.tribalAlly=true;
+  logSep();
+  renderFactionBar();renderAll();
+}
+
+function tribalRelationLabel(r){
+  return {neutral:'中立',wary:'戒備',hostile:'敵對',siege:'圍攻',ally:'盟友'}[r]||r;
 }
 
 // 瘟疫每日地形效果
@@ -674,6 +975,65 @@ function factionChoice(event,choice){
         log('傭兵威脅加速！使用 track 追蹤他。','ld');
       }
       renderFactionBar();break;
+
+    // ── 記者陳思雨第一次接觸 ──
+    case 'journalist_arrive':
+      if(choice==='trust'){
+        G.factions.journalist.route='ally';
+        G.factions.journalist.relationship='ally';
+        addItem('乾糧',2);
+        log('你把自己的遭遇全說了——採礦集團、傭兵、墜機疑點。','ls');
+        log('她的眼睛越來越亮。「這比我想的還要大。」','lx');
+        log('她給了你乾糧×2，並承諾用衛星電話持續對外發報。','ls');
+        log('🟡 陳思雨加入盟友路線。她的報導將加速搜救隊進度。','lo');
+        log('⚠ 但她的調查也讓她成為鐵爪公司的目標。','lw');
+        G.factions.rescue.speed+=2;
+      }else if(choice==='cautious'){
+        G.factions.journalist.route='ally';
+        G.factions.journalist.relationship='ally';
+        log('你只說了基本情況，沒有提到集團和黑盒子。','lm');
+        log('她理解你的謹慎，只說：「我會自己查。」','lx');
+        log('🟡 陳思雨進入謹慎盟友路線。搜救加速較慢，但她自己也在挖料。','lo');
+        addItem('乾糧',1);
+        G.factions.rescue.speed+=1;
+      }else if(choice==='drive_away'){
+        G.factions.journalist.route='hostile';
+        G.factions.journalist.relationship='hostile';
+        G.factions.journalist.attacked=true;
+        log('「離開這裡。你不應該在這裡。」','lm');
+        log('她臉色一沉，後退幾步，轉身消失在樹林裡。','lm');
+        log('🔴 陳思雨進入對立路線。她開始懷疑你的身份，報導對你不利。','ld');
+        log('但她仍在調查，仍在這片叢林裡——你們的故事還沒結束。','lw');
+        G.factions.journalist.suspicionCount=1;
+      }
+      renderFactionBar();break;
+
+    // ── 記者中期：她面臨危險 ──
+    case 'journalist_mid':
+      if(choice==='protect'){
+        G.factions.journalist.protected=true;
+        const dmg=Math.max(1,12-Math.floor(getDef()/2));
+        G.s.hp=cl(G.s.hp-dmg);
+        log(`你衝出去驅散了集團的人，受傷 -${dmg} HP。`,'ld');
+        log('陳思雨：「謝謝你。我欠你一條命。」','lx');
+        log('她立刻把照片透過衛星電話傳出，集團進度大幅倒退。','ls');
+        G.factions.mining.progress=Math.max(0,G.factions.mining.progress-20);
+        G.endingFlags=G.endingFlags||{};G.endingFlags.journalistProtected=true;
+        log('採礦集團照片曝光，進度-20。搜救加速。','ls');
+        G.factions.rescue.speed+=3;
+      }else if(choice==='hide'){
+        log('「快去藏起來，別出聲。」','lm');
+        log('她躲在你的避難所裡，集團搜查了附近但沒找到她。','lm');
+        log('她保住了相機，但暫時無法對外發報。','lw');
+        G.factions.journalist.reportCount=Math.max(0,G.factions.journalist.reportCount-1);
+      }else if(choice==='abandon'){
+        log('你關上了避難所的門。','lm');
+        log('外面傳來了短暫的衝突聲，然後是沉默。','ld');
+        log('相機裡的照片，不知道是否還在。','ld');
+        G.factions.journalist.protected=false;
+        // 讓高潮事件走「她死亡」路線
+      }
+      renderFactionBar();break;
   }
 }
 
@@ -727,7 +1087,7 @@ function doTrack(){
   if(!G.factionPhase||F.eliminated){log('沒有可追蹤的目標。','lm');return;}
   if(F.progress<35){log('目前還沒有足夠線索來追蹤他。繼續求生，等待他現身。','lm');return;}
   const t=G.map[G.py][G.px];
-  if(t!=='jungle'&&t!=='hill'){log('需要在叢林(🌿)或山坡(⛰)地形追蹤。','lw');return;}
+  if(t!=='jungle'&&t!=='hill'){log('需要在雨林(🌿)或山坡(⛰)地形追蹤。','lw');return;}
   tick(60);if(G.dead)return;
   F.trackCount++;
   const msgs=[
@@ -805,13 +1165,34 @@ function renderFactionBar(){
   if(!G||!G.factionPhase){document.getElementById('faction-bar').classList.remove('show');return;}
   document.getElementById('faction-bar').classList.add('show');
   const F=G.factions;
-  const active=[F.mining,F.merc,F.plague,F.rescue].filter(f=>f.active);
-  document.getElementById('faction-rows').innerHTML=active.map(f=>{
+
+  // 採礦/傭兵/瘟疫/搜救 用進度條
+  const progressFactions=[F.mining,F.merc,F.plague,F.rescue].filter(f=>f.active);
+  // 記者/霧林人 用關係狀態
+  const relFactions=[F.journalist,F.tribal].filter(f=>f.active);
+
+  const rows=progressFactions.map(f=>{
     const pct=Math.min(100,f.progress);
     const color=f.eliminated?'#22cc50':f.color;
     const label=f.eliminated?'已消滅':f.id==='rescue'?`${Math.round(pct)}%`:`${Math.round(pct)}%`;
     return`<div class="frow"><span class="fn" style="color:${color}">${f.shortName}</span><div class="fbar-outer"><div class="fbar-inner" style="width:${pct}%;background:${color}"></div></div><span class="fpct" style="color:${color}">${label}</span></div>`;
-  }).join('');
+  });
+
+  relFactions.forEach(f=>{
+    let label,color;
+    if(f.id==='journalist'){
+      const relMap={unknown:'未接觸',ally:'盟友',hostile:'對立',dead:'已故'};
+      label=relMap[f.relationship]||'未知';
+      color=f.relationship==='ally'?'#ffdd44':f.relationship==='hostile'?'#ff6633':f.relationship==='dead'?'#555':'#ffdd44';
+    }else{ // tribal
+      const T=G.factions.tribal;
+      label=tribalRelationLabel(T.relationship)+(T.trespass>0?` 侵${Math.round(T.trespass)}`:'');
+      color=T.allyGranted?'#22cc50':T.relationship==='siege'?'#ff3355':T.relationship==='hostile'?'#ff8833':T.relationship==='wary'?'#ffcc00':'#44ffcc';
+    }
+    rows.push(`<div class="frow"><span class="fn" style="color:${color}">${f.shortName}</span><div class="fbar-outer"><div class="fbar-inner" style="width:100%;background:${color}20"></div></div><span class="fpct" style="color:${color};font-size:10px">${label}</span></div>`);
+  });
+
+  document.getElementById('faction-rows').innerHTML=rows.join('');
 }
 
 // 啟動勢力系統（b5完成後呼叫）
@@ -823,6 +1204,8 @@ function activateFactionPhase(){
   G.factions.merc.active=true;
   G.factions.plague.active=true;
   G.factions.rescue.active=true;
+  G.factions.journalist.active=true;
+  G.factions.tribal.active=true;
   G.endingFlags={};
   logSep();
   log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━','lb');
@@ -835,8 +1218,10 @@ function activateFactionPhase(){
   log('🔴 <span style="color:#ff3355">傭兵「鬼臉」</span>：任務是確保沒有倖存者。','ld');
   log('🦠 <span style="color:#bb88ff">叢林瘟疫</span>：採礦污染釋放的病原體正在蔓延。','ld');
   log('🟦 <span style="color:#33ccff">搜救隊</span>：也收到了信號，正在組建中。','ls');
+  log('🟡 <span style="color:#ffdd44">記者陳思雨</span>：追採礦醜聞進入叢林，動機未明。','lo');
+  log('🌿 <span style="color:#44ffcc">霧林人部落</span>：這片叢林的主人，你的每個行動都在侵犯他們。','lo');
   logSep();
-  log('新指令: <span style="color:#ff6633">investigate</span>(調查) <span style="color:#ff6633">expose</span>(曝光) <span style="color:#ff3355">track</span>(追蹤) <span style="color:#ff3355">ambush</span>(伏擊)','lm');
+  log('新指令: <span style="color:#ff6633">investigate</span>(調查) <span style="color:#ff6633">expose</span>(曝光) <span style="color:#ff3355">track</span>(追蹤) <span style="color:#ff3355">ambush</span>(伏擊) <span style="color:#44ffcc">offer</span>(獻祭) <span style="color:#44ffcc">gesture</span>(溝通)','lm');
   renderFactionBar();
 }
 
@@ -907,11 +1292,15 @@ function bossPassiveHit(){
   if(!onBossGround())return;
   const rage=bossRage();
   const atk=rage?BOSS_PASSIVE_ATK_RAGE:BOSS_PASSIVE_ATK;
-  const dmg=Math.max(1,atk+Math.floor(Math.random()*5)-Math.floor(getDef()/2));
+  let dmg=Math.max(1,atk+Math.floor(Math.random()*5)-Math.floor(getDef()/2));
+  // 霧林人弱點：持有叢林通行令且此格有火堆，被動傷害-30%
+  const hasPass=(G.inv['叢林通行令']||0)>0;
+  const hasBossFire=G.built.some(b=>b.x===G.px&&b.y===G.py&&b.type==='火堆');
+  if(hasPass&&hasBossFire){dmg=Math.max(1,Math.floor(dmg*0.7));}
   G.s.hp=cl(G.s.hp-dmg);
   const infected=!G.infected&&Math.random()<BOSS_INFECT;
   if(infected)G.infected=true;
-  log(`💀 叢林巨獸被你的動作激怒！反擊 -${dmg} HP${getDef()>0?' (防具減傷)':''}${rage?' 【狂暴】':''}。`,'ld');
+  log(`💀 叢林巨獸被你的動作激怒！反擊 -${dmg} HP${getDef()>0?' (防具減傷)':''}${rage?' 【狂暴】':''}${(hasPass&&hasBossFire)?' 🔥(懼火減傷)':''}。`,'ld');
   if(infected)log('💉 巨獸毒素感染傷口！','ld');
   if(G.s.hp<=0)doDeath();
 }
@@ -1116,6 +1505,11 @@ function doExplore(){
     }
   }
   if(Math.random()<0.4)triggerEvent(t);
+  // 霧林人：採集雨林地形累積侵犯值
+  if(G.factionPhase){
+    if(t==='jungle')addTrespass(3);
+    else if(t==='bamboo')addTrespass(2);
+  }
   renderAll();
 }
 
@@ -1154,13 +1548,25 @@ function doAttack(){
 }
 
 function triggerEvent(terrain){
+  // 叢林通行令：雨林/竹林地形不觸發負面事件
+  if(G.factionPhase&&(G.inv['叢林通行令']||0)>0&&(terrain==='jungle'||terrain==='bamboo')){
+    // 只觸發正面事件
+    const pool=(EVENTS[terrain]||[]).filter(e=>e.type==='item'||e.type==='loot'||e.type==='atm'||e.type==='npc');
+    if(pool.length){const ev=pool[Math.floor(Math.random()*pool.length)];
+      log('〔事件〕','lm');log(ev.msg,'li');
+      if(ev.type==='item'){addItem(ev.item,ev.qty);log(`取得: ${ev.item} ×${ev.qty}`,'ls');}
+    }
+    return;
+  }
   const pool=EVENTS[terrain]||EVENTS.clear;const ev=pool[Math.floor(Math.random()*pool.length)];
   log('〔事件〕','lm');log(ev.msg,ev.type==='combat'?'ld':ev.type==='dmg'?'lw':'li');
   switch(ev.type){
     case 'item':addItem(ev.item,ev.qty);log(`取得: ${ev.item} ×${ev.qty}`,'ls');break;
     case 'loot':Object.entries(ev.items).forEach(([k,v])=>addItem(k,v));log(`取得: ${Object.entries(ev.items).map(([k,v])=>k+'×'+v).join(', ')}`,'ls');break;
     case 'dmg':{const actual=applyDmg(ev.dmg);const def=getDef();log(`受傷 -${actual} HP${def>0&&actual<ev.dmg?' (防具減傷)':''}。`,'lw');if((ev.infectChance||0)>0&&Math.random()<ev.infectChance){G.infected=true;log('傷口感染！','ld');}break;}
-    case 'combat':doCombat(ev);break;
+    case 'combat':
+      if(G.factionPhase)addTrespass(8); // 在雨林戰鬥累積侵犯值
+      doCombat(ev);break;
     case 'npc':log(NPC_LINES[Math.floor(Math.random()*NPC_LINES.length)],'lx');break;
     case 'atm':break;
   }
@@ -1216,6 +1622,7 @@ function doBuild(stage){
   const miss=Object.entries(st.needs).filter(([k,v])=>(G.inv[k]||0)<v).map(([k,v])=>`${k}(缺${v-(G.inv[k]||0)})`);
   if(miss.length){log(`材料不足: ${miss.join(', ')}`,'lw');return;}
   Object.entries(st.needs).forEach(([k,v])=>remItem(k,v));G.shelterStage=stage;
+  if(G.factionPhase)addTrespass(5); // 蓋房子侵犯領地
   tick(120);if(G.dead)return;
   logSep();log(`避難所升級 → ${st.name}`,'ls');log(`解鎖: ${st.bonus}`,'lo');logSep();
   if(stage===6&&G.day>=30&&!G.factionPhase)doWin();
@@ -1302,19 +1709,24 @@ function doDeath(){if(G.dead)return;G.dead=true;logSep();log('你在叢林中倒
 function doWin(){
   if(G.won)return;G.won=true;
   const ef=G.endingFlags||{};
+  const score=[ef.miningExposed,ef.mercDefeated,ef.blackboxHeard,ef.journalistProtected,ef.tribalAlly].filter(Boolean).length;
+
   let title,body;
-  if(ef.miningExposed&&ef.mercDefeated&&ef.blackboxHeard){
-    title='真相大白';
-    body=`第 ${G.day} 天，直升機降落在你的永久營地。\n\n你帶著黑盒子、傭兵合約與採礦證據走出叢林。\n\n陳思雨的報導已在全球引發軒然大波。\n鐵爪公司高層被捕，幕後主謀被引渡。\n那場「意外」的真相，終於公諸於世。\n\n你的故事改變了這片叢林的命運。\n\n🏆 隱藏結局：真相大白`;
-  }else if(ef.miningExposed&&ef.mercDefeated){
+  if(score>=5){
+    title='完全真相';
+    body=`第 ${G.day} 天。直升機降落，全世界都在等著你。\n\n你帶著黑盒子、傭兵合約走出叢林，\n陳思雨的攝影機記錄下了你的每一步。\n霧林人長老站在叢林邊緣，靜靜目送。\n\n鐵爪公司高層被捕，幕後黑手引渡法辦。\n這片叢林被列為自然保護區。\n\n🏆 最高結局：完全真相\n（5/5 結局旗標）`;
+  }else if(score>=3&&ef.miningExposed&&ef.mercDefeated){
     title='英雄歸來';
-    body=`第 ${G.day} 天，救援直升機抵達。\n\n你擊敗了傭兵，曝光了採礦集團。\n叢林終於歸於平靜。\n\n🥇 優良結局：英雄歸來`;
+    body=`第 ${G.day} 天，搜救隊終於找到了你。\n\n你曝光了集團，擊敗了傭兵，叢林得到了短暫的平靜。\n還有些事沒有解決，但你已盡力了。\n\n🥇 優良結局：英雄歸來\n（${score}/5 結局旗標）`;
+  }else if(ef.tribalAlly&&!ef.miningExposed){
+    title='與叢林共生';
+    body=`第 ${G.day} 天，直升機穿過晨霧降落。\n\n你沒能揭開所有真相，但你學會了一件事：\n這片叢林從不屬於任何人。\n\n霧林人長老遠遠揮了揮手。\n\n🌿 特殊結局：與叢林共生`;
   }else if(ef.blackboxLost){
     title='獲救了';
-    body=`第 ${G.day} 天，直升機來了。\n\n你活下來了，但交出的黑盒子讓真相永遠沉入叢林深處。\n\n有些事，從此再也無人知曉。\n\n📦 普通結局（黑盒子遺失）`;
+    body=`第 ${G.day} 天，直升機來了。\n\n你活下來了，但那個橙色金屬盒子已不在你手中。\n有些真相，選擇了永遠沉默。\n\n📦 普通結局（黑盒子遺失）`;
   }else{
     title='獲救了！';
-    body=`第 ${G.day} 天，救援直升機的聲音從天際傳來。\n\n你的求救信號台閃爍著光芒，\n引導飛機降落在你親手建造的永久營地上。\n\n你回頭看了一眼叢林巨獸倒下的位置，\n踏上了回家的路。\n\n恭喜完成 JUNGLE！`;
+    body=`第 ${G.day} 天，救援直升機的聲音從天際傳來。\n\n你的求救信號台閃爍著光芒，\n引導飛機降落在你親手建造的永久營地上。\n\n你回頭看了一眼這片叢林，踏上了回家的路。\n\n恭喜完成 JUNGLE！\n（${score}/5 結局旗標，嘗試解鎖更多）`;
   }
   showModal(title,body);
 }
@@ -1329,6 +1741,7 @@ const ALIASES={
   ex:'explore',l:'look',d:'drink',co:'collect',sl:'sleep',
   at:'attack',st:'status',mk:'mark',mks:'marks',eq:'equip',
   inv:'investigate',exp:'expose',tr:'track',amb:'ambush',
+  of:'offer',ge:'gesture',
   '?':'help',h:'help',
 };
 const NO_RECORD=new Set(['help','status','marks','?','h','st','mks','look','l']);
@@ -1364,6 +1777,8 @@ function processCmd(raw){
     case 'expose':doExpose();break;
     case 'track':doTrack();break;
     case 'ambush':doAmbush();break;
+    case 'offer':doOffer();break;
+    case 'gesture':doGesture();break;
     case 'mark':doMark(arg);break;
     case 'marks':doMarks();break;
     case 'status':
@@ -1381,8 +1796,11 @@ function processCmd(raw){
         log(`🔴 傭兵鬼臉: ${F.merc.eliminated?'已擊敗 ✓':`進度 ${Math.round(F.merc.progress)}%（追蹤${F.merc.trackCount}/3）`}`,'lo');
         log(`🦠 叢林瘟疫: ${F.plague.eliminated?'已消滅 ✓':`進度 ${Math.round(F.plague.progress)}%${F.plague.filterCrafted?' [免疫中]':''}`}`,'lo');
         log(`🟦 搜救隊:   進度 ${Math.round(F.rescue.progress)}%${F.rescue.blocked?' [受阻]':''}`,'lx');
+        const relJ={unknown:'未接觸',ally:'盟友',hostile:'對立',dead:'已故'};
+        log(`🟡 記者陳思雨: ${relJ[F.journalist.relationship]||'—'} 路線:${F.journalist.route||'未定'} 報導:${F.journalist.reportCount}篇`,'lo');
+        log(`🌿 霧林人: ${tribalRelationLabel(F.tribal.relationship)} 侵犯值:${Math.round(F.tribal.trespass)}${F.tribal.allyGranted?' [盟友✓]':''}`,'lo');
         const ef=G.endingFlags||{};
-        log(`結局旗標: 曝光[${ef.miningExposed?'✓':'✗'}] 擊敗傭兵[${ef.mercDefeated?'✓':'✗'}] 黑盒子[${ef.blackboxHeard?'✓':'✗'}]`,'lm');
+        log(`結局旗標: 曝光[${ef.miningExposed?'✓':'✗'}] 傭兵[${ef.mercDefeated?'✓':'✗'}] 黑盒子[${ef.blackboxHeard?'✓':'✗'}] 記者[${ef.journalistProtected?'✓':'✗'}] 部落[${ef.tribalAlly?'✓':'✗'}]`,'lm');
       }
       logSep();break;
     case 'help':
@@ -1416,18 +1834,31 @@ function processCmd(raw){
       log('b5完成後：勢力系統啟動，外來威脅開始計時！','ld');logSep();
       if(G.factionPhase){
         log('─ 勢力指令 ─','lo');
-        [['inv','investigate','調查採礦集團（殘骸/山坡），蒐集證據'],
-         ['exp','expose','曝光集團（需3份證據+信號台）'],
-         ['tr','track','追蹤傭兵鬼臉（叢林/山坡），累積3次後可伏擊'],
-         ['amb','ambush','伏擊傭兵（需track×3，HP>60，有武器）'],
-         ['u 黑盒子','use 黑盒子','播放黑盒子錄音（隱藏結局線索）'],
-         ['c 草藥過濾器','craft 草藥過濾器','對抗叢林瘟疫（藥草×4+竹子×2+繩索×1）'],
+        [['inv','investigate','調查採礦集團（殘骸/山坡），蒐集3份證據'],
+         ['exp','expose','曝光集團（需3份證據＋信號台）→ 永久消滅威脅'],
+         ['tr','track','追蹤傭兵鬼臉（雨林/山坡），累積3次後可伏擊'],
+         ['amb','ambush','伏擊傭兵（需track×3，HP>60，裝備武器）'],
+         ['u 黑盒子','use 黑盒子','播放黑盒子錄音（最高結局線索）'],
+         ['c 草藥過濾器','craft 草藥過濾器','免疫瘟疫（藥草×4+竹子×2+繩索×1）'],
+         ['of','offer','獻祭食物資源安撫霧林人（需≥2份食物）'],
+         ['ge','gesture','與霧林人長老溝通（需侵犯值<50，長老已現身）'],
         ].forEach(([s,f,d])=>{const sc=`<span style="color:#ff6633">${s}</span> / `;log(`${sc}<span style="color:#5a9a6a">${f}</span> — ${d}`,'li');});
         logSep();
-        log('─ 多結局條件 ─','lo');
-        log('普通結局: b6+第30天','lm');
-        log('英雄結局: 曝光集團(expose) + 擊敗傭兵(ambush)','lm');
-        log('隱藏結局: 英雄結局 + 聆聽黑盒子(u 黑盒子)','lb');
+        log('─ 6大勢力說明 ─','lo');
+        log('🔴 採礦集團：每天+12%，100%炸信號台。investigate×3→expose消滅','lm');
+        log('🔴 傭兵鬼臉：每天+8%，75%起每天-25HP（防具無效）。track×3→ambush','lm');
+        log('🦠 叢林瘟疫：雨天加速，感染機率逐步增高。c草藥過濾器可免疫','lm');
+        log('🟦 搜救隊：緩慢推進，集團干擾會減速。expose可大幅加速','lm');
+        log('🟡 記者陳思雨：第一次接觸決定盟友/對立路線，影響搜救速度','lm');
+        log('🌿 霧林人：在雨林/竹林採集、蓋房累積侵犯值，offer或停止可降低','lm');
+        logSep();
+        log('─ 5個結局旗標（st查看當前進度）─','lo');
+        log('① expose 曝光採礦集團','lm');
+        log('② ambush 擊敗傭兵鬼臉','lm');
+        log('③ u黑盒子 聆聽飛機墜落錄音','lm');
+        log('④ 保護記者陳思雨（journalist_mid事件選「保護」）','lm');
+        log('⑤ offer/gesture 與霧林人成為盟友','lm');
+        log('★ 5/5旗標 → 最高結局「完全真相」','lb');
         logSep();
       }
       break;
